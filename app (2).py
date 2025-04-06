@@ -40,8 +40,8 @@ st.sidebar.title("🔧 Settings")
 model_option = st.sidebar.selectbox("Select Model", ["Linear Regression", "Random Forest", "XGBoost"])
 
 # --- Feature Selection ---
-X = df.drop(columns=["Energy_Output"])
-y = df["Energy_Output"]
+X = df.drop(columns=["Energy_Output (mA)"])
+y = df["Energy_Output (mA)"]
 
 # --- Split Data ---
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)

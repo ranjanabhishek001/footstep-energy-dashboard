@@ -26,8 +26,8 @@ if uploaded_file is not None:
     st.write(df.head())
 
     # Data Splitting
-    X = df.drop("Energy_Output (mA)", axis=1)
-    y = df["Energy_Output (mA)"]
+    X = df.drop("Energy_Output", axis=1)
+    y = df["Energy_Output"]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # Model Training
@@ -45,7 +45,7 @@ if uploaded_file is not None:
     y_pred = model.predict(X_test)
 
     # Tabs for Results and Visualizations
-    tab1, tab2 = st.tabs(["📈 Results", "📊 Visualizations"])
+    tab1, tab2, tab3 = st.tabs(["📈 Results", "📊 Visualizations", "📌 All Model Comparison"])
 
     with tab1:
         st.subheader("📊 Model Performance")
@@ -74,27 +74,17 @@ if uploaded_file is not None:
         )
         fig_actual_pred.update_layout(showlegend=False)
         st.plotly_chart(fig_actual_pred, use_container_width=True)
-        st.subheader("📊 Actual vs Predicted Comparison - All Models")
 
-        all_preds = {}
+    with tab3:
+        st.subheader("📌 Actual vs Predicted Energy Output (All Models)")
+        all_preds = pd.DataFrame({"Actual": y_test.reset_index(drop=True)})
         for name, mdl in models.items():
             mdl.fit(X_train, y_train)
-            preds = mdl.predict(X_test)
-            all_preds[name] = preds
+            all_preds[name] = mdl.predict(X_test)
 
-        comparison_df = pd.DataFrame({
-            "Actual": y_test.reset_index(drop=True),
-            "Linear Regression": all_preds["Linear Regression"],
-            "Random Forest": all_preds["Random Forest"],
-            "XGBoost": all_preds["XGBoost"]
-        })
-
-        fig_comparison = px.line(
-            comparison_df,
-            title="📈 Actual vs Predicted Energy Output (All Models)",
-            labels={"value": "Energy Output (mA)", "index": "Test Sample Index"},
-        )
-        fig_comparison.update_traces(mode="lines+markers")
-        st.plotly_chart(fig_comparison, use_container_width=True)
+        fig_all_models = px.line(all_preds, labels={"value": "Energy Output (mA)", "index": "Sample Index"})
+        fig_all_models.update_layout(title="📊 Actual vs Predicted Energy Output (All Models)",
+                                     legend_title_text='Legend')
+        st.plotly_chart(fig_all_models, use_container_width=True)
 else:
     st.info("👈 Upload a CSV file from the sidebar to begin.")

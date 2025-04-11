@@ -195,6 +195,5 @@ with tab3:
     # Visualization code...
 
 style_metric_cards()
-)
 
 

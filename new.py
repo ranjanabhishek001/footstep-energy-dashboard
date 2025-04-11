@@ -45,7 +45,7 @@ if uploaded_file is not None:
     y_pred = model.predict(X_test)
 
     # Tabs for Results and Visualizations
-    tab1, tab2, tab3 = st.tabs(["📈 Results", "📊 Visualizations", "📌 All Model Comparison"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📈 Results", "📊 Visualizations", "📌 All Model Comparison", "🧪 Live Prediction"])
 
     with tab1:
         st.subheader("📊 Model Performance")
@@ -58,10 +58,13 @@ if uploaded_file is not None:
         pred_df = pd.DataFrame({"Actual": y_test, "Predicted": y_pred}).reset_index(drop=True)
         st.dataframe(pred_df)
 
+        csv_pred = pred_df.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Download Prediction Table", data=csv_pred, file_name="prediction_results.csv", mime="text/csv")
+
     with tab2:
         st.subheader("📉 Correlation Heatmap")
         fig1, ax1 = plt.subplots()
-        sns.heatmap(df.corr(), annot=True, cmap="coolwarm", ax=ax1)
+        sns.heatmap(df.corr(numeric_only=True), annot=True, cmap="coolwarm", ax=ax1)
         st.pyplot(fig1)
 
         st.subheader("📌 Actual vs Predicted Plot")
@@ -78,13 +81,39 @@ if uploaded_file is not None:
     with tab3:
         st.subheader("📌 Actual vs Predicted Energy Output (All Models)")
         all_preds = pd.DataFrame({"Actual": y_test.reset_index(drop=True)})
+        model_metrics = []
+
         for name, mdl in models.items():
             mdl.fit(X_train, y_train)
-            all_preds[name] = mdl.predict(X_test)
+            preds = mdl.predict(X_test)
+            all_preds[name] = preds
+            mse = mean_squared_error(y_test, preds)
+            r2 = r2_score(y_test, preds)
+            model_metrics.append({"Model": name, "MSE": mse, "R² Score": r2})
 
         fig_all_models = px.line(all_preds, labels={"value": "Energy Output (mA)", "index": "Sample Index"})
         fig_all_models.update_layout(title="📊 Actual vs Predicted Energy Output (All Models)",
                                      legend_title_text='Legend')
         st.plotly_chart(fig_all_models, use_container_width=True)
+
+        st.subheader("📌 Side-by-Side Model Performance")
+        metrics_df = pd.DataFrame(model_metrics)
+        st.dataframe(metrics_df.style.highlight_max(axis=0))
+
+        csv_metrics = metrics_df.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Download Model Metrics", data=csv_metrics, file_name="model_comparison.csv", mime="text/csv")
+
+    with tab4:
+        st.subheader("🧮 Predict Energy Output from Manual Input")
+
+        feature_inputs = {}
+        for col in X.columns:
+            val = st.number_input(f"Enter {col}", value=float(df[col].mean()), format="%.2f")
+            feature_inputs[col] = val
+
+        if st.button("🚀 Predict Energy Output"):
+            input_df = pd.DataFrame([feature_inputs])
+            predicted_energy = model.predict(input_df)[0]
+            st.success(f"⚡ Predicted Energy Output: **{predicted_energy:.2f} mA**")
 else:
     st.info("👈 Upload a CSV file from the sidebar to begin.")

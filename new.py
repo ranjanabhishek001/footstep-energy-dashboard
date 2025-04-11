@@ -74,7 +74,7 @@ if uploaded_file is not None:
         )
         fig_actual_pred.update_layout(showlegend=False)
         st.plotly_chart(fig_actual_pred, use_container_width=True)
-                st.subheader("📊 Actual vs Predicted Comparison - All Models")
+        st.subheader("📊 Actual vs Predicted Comparison - All Models")
 
         all_preds = {}
         for name, mdl in models.items():

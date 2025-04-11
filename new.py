@@ -74,5 +74,27 @@ if uploaded_file is not None:
         )
         fig_actual_pred.update_layout(showlegend=False)
         st.plotly_chart(fig_actual_pred, use_container_width=True)
+                st.subheader("📊 Actual vs Predicted Comparison - All Models")
+
+        all_preds = {}
+        for name, mdl in models.items():
+            mdl.fit(X_train, y_train)
+            preds = mdl.predict(X_test)
+            all_preds[name] = preds
+
+        comparison_df = pd.DataFrame({
+            "Actual": y_test.reset_index(drop=True),
+            "Linear Regression": all_preds["Linear Regression"],
+            "Random Forest": all_preds["Random Forest"],
+            "XGBoost": all_preds["XGBoost"]
+        })
+
+        fig_comparison = px.line(
+            comparison_df,
+            title="📈 Actual vs Predicted Energy Output (All Models)",
+            labels={"value": "Energy Output (mA)", "index": "Test Sample Index"},
+        )
+        fig_comparison.update_traces(mode="lines+markers")
+        st.plotly_chart(fig_comparison, use_container_width=True)
 else:
     st.info("👈 Upload a CSV file from the sidebar to begin.")

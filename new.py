@@ -26,8 +26,8 @@ if uploaded_file is not None:
     st.write(df.head())
 
     # Data Splitting
-    X = df.drop("Energy_Output", axis=1)
-    y = df["Energy_Output"]
+    X = df.drop("Energy_Output (mA)", axis=1)
+    y = df["Energy_Output (mA)"]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # Model Training

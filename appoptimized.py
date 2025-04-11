@@ -154,11 +154,11 @@ with tab1:
 with tab2:
     st.markdown('### 🔬 Data Exploration')
     with st.expander("📘 Understanding Visualizations"):
-        st.markdown("
+        st.markdown(""""
         - **Correlation Heatmap**: Shows relationships between features (-1 to 1)
         - **Feature Importance**: Relative impact of each input on predictions
         - **Actual vs Predicted**: Ideal points fall on the diagonal line
-        ")
+        """")
     
     # Cached visualizations
     @st.cache_data

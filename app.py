@@ -15,6 +15,7 @@ from streamlit_extras.metric_cards import style_metric_cards
 
 # --- Custom CSS ---
 
+It looks like there was a small mistake in the comment syntax for the CSS. Here's the corrected code snippet without the syntax error:
 css
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
 /* Set a light background for the body and main container /
@@ -100,6 +101,7 @@ padding: 0.75em; / More padding for touch targets */
 padding: 15px; /* Reduced padding for cards */
 }
 }
+This should resolve any syntax errors. You can copy and paste this CSS code snippet directly into your project.
 
 # --- Title ---
 st.title('👣 Footstep Energy Harvesting Dashboard')

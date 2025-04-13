@@ -14,81 +14,92 @@ import plotly.graph_objects as go
 from streamlit_extras.metric_cards import style_metric_cards
 
 # --- Custom CSS ---
-st.markdown('''
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
 
-        body, .main {
-            background-color: #f1f3f6 !important;
-            color: #222 !important;
-        }
-
-        .stApp {
-            background-color: #f1f3f6 !important;
-        }
-
-        * {
-            font-family: 'Poppins', sans-serif;
-        }
-
-        .stNumberInput input,
-        .stTextInput input,
-        .stSelectbox div[role="combobox"],
-        .stMultiSelect div[role="combobox"],
-        .stTextArea textarea {
-            background-color: #ffffff !important;
-            color: #000000 !important;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-        }
-
-        .stNumberInput label,
-        .stTextInput label,
-        .stSelectbox label,
-        .stMultiSelect label,
-        .stTextArea label {
-            color: #000000 !important;
-        }
-
-        .stTabs [data-baseweb="tab"] {
-            color: #000000 !important;
-            background-color: #e8ecf1 !important;
-        }
-
-        .stTabs [aria-selected="true"] {
-            background-color: #2E86AB !important;
-            color: #ffffff !important;
-        }
-
-        .stButton>button {
-            background: linear-gradient(135deg, #2E86AB 0%, #1a6f8b 100%);
-            color: white;
-            padding: 0.5em 2em;
-            border-radius: 30px;
-            border: none;
-            font-weight: 500;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
-        }
-
-        .stButton>button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
-        }
-
-        .metric-card, .prediction-card {
-            background-color: #ffffff !important;
-            color: #000000 !important;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
-
-        .block-container {
-            padding: 2rem 2rem;
-        }
-    </style>
-''', unsafe_allow_html=True)
+css
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+/* Set a light background for the body and main container /
+body, .main {
+background-color: #f1f3f6 !important; / Light grey background /
+color: #222 !important; / Dark text for contrast */
+}
+/* Customize the Streamlit app background /
+.stApp {
+background-color: #f1f3f6 !important; / Ensure app background matches */
+}
+/* Apply Poppins font to all text */
+{
+font-family: 'Poppins', sans-serif; /* Modern sans-serif font */
+}
+/* Style for input fields and text areas /
+.stNumberInput input,
+.stTextInput input,
+.stSelectbox div[role="combobox"],
+.stMultiSelect div[role="combobox"],
+.stTextArea textarea {
+background-color: #ffffff !important; / White background for inputs /
+color: #000000 !important; / Black text in inputs /
+border-radius: 8px; / Rounded corners for inputs /
+border: 1px solid #ccc; / Light grey border */
+}
+/* Label styles for inputs /
+.stNumberInput label,
+.stTextInput label,
+.stSelectbox label,
+.stMultiSelect label,
+.stTextArea label {
+color: #000000 !important; / Black text for labels */
+}
+/* Tabs styling /
+.stTabs [data-baseweb="tab"] {
+color: #000000 !important; / Black text for unselected tabs /
+background-color: #e8ecf1 !important; / Light blue background for tabs */
+}
+/* Active tab styling /
+.stTabs [aria-selected="true"] {
+background-color: #2E86AB !important; / Blue background for active tab /
+color: #ffffff !important; / White text for active tab */
+}
+/* Button styling /
+.stButton > button {
+background: linear-gradient(135deg, #2E86AB 0%, #1a6f8b 100%); / Gradient background /
+color: white; / White text on buttons /
+padding: 0.5em 2em; / Padding for button /
+border-radius: 30px; / Round button edges /
+border: none; / No border /
+font-weight: 500; / Medium font weight /
+box-shadow: 0 4px 6px rgba(0,0,0,0.1); / Subtle shadow for depth /
+transition: all 0.3s ease; / Smooth transitions */
+}
+/* Button hover effect /
+.stButton > button:hover {
+transform: translateY(-2px); / Lift button on hover /
+box-shadow: 0 6px 8px rgba(0,0,0,0.15); / Darker shadow on hover */
+}
+/* Card styling /
+.metric-card, .prediction-card {
+background-color: #ffffff !important; / White background for cards /
+color: #000000 !important; / Black text for cards /
+border-radius: 15px; / Rounded corners /
+padding: 20px; / Padding inside cards /
+box-shadow: 0 4px 6px rgba(0,0,0,0.05); / Subtle shadow */
+}
+/* Container padding /
+.block-container {
+padding: 2rem 2rem; / Adequate padding around blocks */
+}
+/* Responsive design adjustments /
+@media (max-width: 768px) {
+.block-container {
+padding: 1rem; / Less padding on smaller screens */
+}
+.stButton > button {
+width: 100%; /* Full-width buttons on mobile /
+padding: 0.75em; / More padding for touch targets */
+}
+.metric-card, .prediction-card {
+padding: 15px; /* Reduced padding for cards */
+}
+}
 
 # --- Title ---
 st.title('👣 Footstep Energy Harvesting Dashboard')

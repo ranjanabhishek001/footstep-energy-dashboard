@@ -14,7 +14,7 @@ import plotly.graph_objects as go
 from streamlit_extras.metric_cards import style_metric_cards
 
 # --- Custom CSS ---
-
+css = """
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
 
 /* Set a light background for the body and main container */
@@ -111,7 +111,10 @@ body, .main {
         padding: 15px; /* Reduced padding for cards */
     }
 }
+"""
 
+# Apply CSS to the Streamlit app
+st.markdown(f'<style>{css}</style>', unsafe_allow_html=True)
 
 # --- Title ---
 st.title('👣 Footstep Energy Harvesting Dashboard')
@@ -255,139 +258,4 @@ with tab1:
         else:
             # Single model prediction
             prediction = model.predict(input_scaled)[0]
-            st.markdown('''<div class='prediction-card'>
-                    <h3>Prediction Result</h3>
-                    <p style='font-size: 24px; margin: 10px 0;'><b>{}</b></p>
-                    <p style='font-size: 18px;'>Predicted Output: <b style='color: var(--accent);'>{:.2f} mA</b></p>
-                </div>'''.format(model_option, prediction), unsafe_allow_html=True)
-
-with tab2:
-    st.markdown('### 🔬 Data Exploration')
-    
-    # Data summary
-    with st.expander('📋 Dataset Overview'):
-        st.dataframe(df.describe().style.background_gradient(cmap='Blues'))
-    
-    # Correlation Heatmap
-    st.markdown('#### 🔥 Correlation Heatmap')
-    fig1 = px.imshow(
-        df.corr(),
-        text_auto=True,
-        color_continuous_scale='RdBu',
-        aspect='auto'
-    )
-    st.plotly_chart(fig1, use_container_width=True)
-    
-    # Feature Distribution
-    st.markdown('#### 📊 Feature Distributions')
-    feature = st.selectbox('Select feature to visualize', X.columns)
-    
-    fig_dist = px.histogram(
-        df, 
-        x=feature, 
-        marginal='box',
-        color_discrete_sequence=['#2E86AB'],
-        title=f'Distribution of {feature}'
-    )
-    st.plotly_chart(fig_dist, use_container_width=True)
-    
-    # Feature vs Energy Output
-    st.markdown('#### ⚡ Feature vs Energy Output')
-    fig_scatter = px.scatter(
-        df,
-        x=feature,
-        y='Energy_Output (mA)',
-        trendline='lowess',
-        color_discrete_sequence=['#F18F01'],
-        title=f'{feature} vs Energy Output'
-    )
-    st.plotly_chart(fig_scatter, use_container_width=True)
-    
-    # Feature Importance (if tree-based model)
-    if model_option in ['Random Forest', 'XGBoost']:
-        st.markdown('#### 🧠 Feature Importance')
-        importance_df = pd.DataFrame({
-            'Feature': X.columns,
-            'Importance': model.feature_importances_
-        }).sort_values(by='Importance', ascending=True)
-        
-        fig_importance = px.bar(
-            importance_df,
-            x='Importance',
-            y='Feature',
-            orientation='h',
-            color='Importance',
-            color_continuous_scale='Blues',
-            title='Feature Importance'
-        )
-        st.plotly_chart(fig_importance, use_container_width=True)
-
-with tab3:
-    st.markdown('### 🏆 Model Performance Comparison')
-    
-    # Train all models and collect metrics
-    metrics = []
-    for name, m in models.items():
-        m.fit(X_train_scaled, y_train)
-        y_pred = m.predict(X_test_scaled)
-        metrics.append({
-            'Model': name,
-            'R²': r2_score(y_test, y_pred),
-            'RMSE': np.sqrt(mean_squared_error(y_test, y_pred)),
-            'MAE': mean_absolute_error(y_test, y_pred)
-        })
-    
-    metrics_df = pd.DataFrame(metrics)
-    
-    # Display metrics table
-    st.dataframe(
-        metrics_df.style
-        .background_gradient(subset=['R²'], cmap='Greens')
-        .background_gradient(subset=['RMSE', 'MAE'], cmap='Reds_r')
-        .format({'R²': '{:.3f}', 'RMSE': '{:.2f}', 'MAE': '{:.2f}'}),
-        use_container_width=True
-    )
-    
-    # Interactive comparison chart
-    metric_to_compare = st.selectbox('Select metric to compare', ['R²', 'RMSE', 'MAE'])
-    
-    fig_compare = px.bar(
-        metrics_df,
-        x='Model',
-        y=metric_to_compare,
-        color='Model',
-        color_discrete_sequence=['#2E86AB', '#F18F01', '#C73E1D'],
-        text_auto='.2f',
-        title=f'Model Comparison by {metric_to_compare}'
-    )
-    st.plotly_chart(fig_compare, use_container_width=True)
-    
-    # Actual vs Predicted comparison
-    st.markdown('#### 📈 Actual vs Predicted Comparison')
-    
-    actual_vs_pred = []
-    for name, m in models.items():
-        m.fit(X_train_scaled, y_train)
-        y_pred = m.predict(X_test_scaled)
-        actual_vs_pred.append(pd.DataFrame({
-            'Model': name,
-            'Actual': y_test,
-            'Predicted': y_pred
-        }))
-    
-    actual_vs_pred_df = pd.concat(actual_vs_pred)
-    
-    fig_avp = px.scatter(
-        actual_vs_pred_df,
-        x='Actual',
-        y='Predicted',
-        color='Model',
-        facet_col='Model',
-        facet_col_wrap=3,
-        color_discrete_sequence=['#2E86AB', '#F18F01', '#C73E1D'],
-        trendline='lowess',
-        title='Actual vs Predicted Values Across Models'
-    )
-    st.plotly_chart(fig_avp, use_container_width=True)
-
-
+            st.markdown('''<

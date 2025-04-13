@@ -13,105 +13,92 @@ import plotly.express as px
 import plotly.graph_objects as go
 from streamlit_extras.metric_cards import style_metric_cards
 
-# --- Custom CSS ---
+# --- Custom CSS (injected via markdown, not raw in script) ---
+custom_css = """
+<style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
 
-/* Set a light background for the body and main container */
-body, .main {
-    background-color: #f1f3f6 !important; /* Light grey background */
-    color: #222 !important; /* Dark text for contrast */
+body, .main, .stApp {
+    background-color: #f1f3f6 !important;
+    color: #222 !important;
+    font-family: 'Poppins', sans-serif;
 }
 
-/* Customize the Streamlit app background */
-.stApp {
-    background-color: #f1f3f6 !important; /* Ensure app background matches */
-}
-
-/* Apply Poppins font to all text */
-* {
-    font-family: 'Poppins', sans-serif; /* Modern sans-serif font */
-}
-
-/* Style for input fields and text areas */
 .stNumberInput input,
 .stTextInput input,
 .stSelectbox div[role="combobox"],
 .stMultiSelect div[role="combobox"],
 .stTextArea textarea {
-    background-color: #ffffff !important; /* White background for inputs */
-    color: #000000 !important; /* Black text in inputs */
-    border-radius: 8px; /* Rounded corners for inputs */
-    border: 1px solid #ccc; /* Light grey border */
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border-radius: 8px;
+    border: 1px solid #ccc;
 }
 
-/* Label styles for inputs */
 .stNumberInput label,
 .stTextInput label,
 .stSelectbox label,
 .stMultiSelect label,
 .stTextArea label {
-    color: #000000 !important; /* Black text for labels */
+    color: #000000 !important;
 }
 
-/* Tabs styling */
 .stTabs [data-baseweb="tab"] {
-    color: #000000 !important; /* Black text for unselected tabs */
-    background-color: #e8ecf1 !important; /* Light blue background for tabs */
+    color: #000000 !important;
+    background-color: #e8ecf1 !important;
 }
 
-/* Active tab styling */
 .stTabs [aria-selected="true"] {
-    background-color: #2E86AB !important; /* Blue background for active tab */
-    color: #ffffff !important; /* White text for active tab */
+    background-color: #2E86AB !important;
+    color: #ffffff !important;
 }
 
-/* Button styling */
 .stButton > button {
-    background: linear-gradient(135deg, #2E86AB 0%, #1a6f8b 100%); /* Gradient background */
-    color: white; /* White text on buttons */
-    padding: 0.5em 2em; /* Padding for button */
-    border-radius: 30px; /* Round button edges */
-    border: none; /* No border */
-    font-weight: 500; /* Medium font weight */
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Subtle shadow for depth */
-    transition: all 0.3s ease; /* Smooth transitions */
+    background: linear-gradient(135deg, #2E86AB 0%, #1a6f8b 100%);
+    color: white;
+    padding: 0.5em 2em;
+    border-radius: 30px;
+    border: none;
+    font-weight: 500;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
 }
 
-/* Button hover effect */
 .stButton > button:hover {
-    transform: translateY(-2px); /* Lift button on hover */
-    box-shadow: 0 6px 8px rgba(0,0,0,0.15); /* Darker shadow on hover */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0,0,0,0.15);
 }
 
-/* Card styling */
 .metric-card, .prediction-card {
-    background-color: #ffffff !important; /* White background for cards */
-    color: #000000 !important; /* Black text for cards */
-    border-radius: 15px; /* Rounded corners */
-    padding: 20px; /* Padding inside cards */
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05); /* Subtle shadow */
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
 }
 
-/* Container padding */
 .block-container {
-    padding: 2rem 2rem; /* Adequate padding around blocks */
+    padding: 2rem 2rem;
 }
 
-/* Responsive design adjustments */
 @media (max-width: 768px) {
     .block-container {
-        padding: 1rem; /* Less padding on smaller screens */
+        padding: 1rem;
     }
     .stButton > button {
-        width: 100%; /* Full-width buttons on mobile */
-        padding: 0.75em; /* More padding for touch targets */
+        width: 100%;
+        padding: 0.75em;
     }
     .metric-card, .prediction-card {
-        padding: 15px; /* Reduced padding for cards */
+        padding: 15px;
     }
 }
+</style>
+"""
 
+st.markdown(custom_css, unsafe_allow_html=True)
 
+# Continue your Streamlit app code here...
 # --- Title ---
 st.title('👣 Footstep Energy Harvesting Dashboard')
 st.markdown('''
@@ -120,6 +107,7 @@ st.markdown('''
         <h3 style='color: white; margin: 0;'>Predicting Energy Output from Footsteps using Machine Learning</h3>
     </div>
 ''', unsafe_allow_html=True)
+
 
 # --- Load Data ---
 @st.cache_data
@@ -360,31 +348,3 @@ with tab3:
         title=f'Model Comparison by {metric_to_compare}'
     )
     st.plotly_chart(fig_compare, use_container_width=True)
-    
-    # Actual vs Predicted comparison
-    st.markdown('#### 📈 Actual vs Predicted Comparison')
-    
-    actual_vs_pred = []
-    for name, m in models.items():
-        m.fit(X_train_scaled, y_train)
-        y_pred = m.predict(X_test_scaled)
-        actual_vs_pred.append(pd.DataFrame({
-            'Model': name,
-            'Actual': y_test,
-            'Predicted': y_pred
-        }))
-    
-    actual_vs_pred_df = pd.concat(actual_vs_pred)
-    
-    fig_avp = px.scatter(
-        actual_vs_pred_df,
-        x='Actual',
-        y='Predicted',
-        color='Model',
-        facet_col='Model',
-        facet_col_wrap=3,
-        color_discrete_sequence=['#2E86AB', '#F18F01', '#C73E1D'],
-        trendline='lowess',
-        title='Actual vs Predicted Values Across Models'
-    )
-    st.plotly_chart(fig_avp, use_container_width=True)

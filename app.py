@@ -100,6 +100,7 @@ padding: 15px; /* Reduced padding for cards */
 }
 }
 
+
 # --- Title ---
 st.title('👣 Footstep Energy Harvesting Dashboard')
 st.markdown('''

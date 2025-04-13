@@ -17,30 +17,51 @@ from streamlit_extras.metric_cards import style_metric_cards
 st.markdown('''
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
-        
-        :root {
-            --primary: #2E86AB;
-            --secondary: #F18F01;
-            --accent: #C73E1D;
-            --light: #F0F2F6;
-            --dark: #2B2D42;
+
+        body, .main {
+            background-color: #f1f3f6 !important;
+            color: #222 !important;
         }
-        
+
+        .stApp {
+            background-color: #f1f3f6 !important;
+        }
+
         * {
             font-family: 'Poppins', sans-serif;
         }
-        
-        .main {
-            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 100%);
+
+        .stNumberInput input,
+        .stTextInput input,
+        .stSelectbox div[role="combobox"],
+        .stMultiSelect div[role="combobox"],
+        .stTextArea textarea {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            border-radius: 8px;
+            border: 1px solid #ccc;
         }
-        
-        h1, h2, h3 {
-            color: var(--primary);
-            font-weight: 600;
+
+        .stNumberInput label,
+        .stTextInput label,
+        .stSelectbox label,
+        .stMultiSelect label,
+        .stTextArea label {
+            color: #000000 !important;
         }
-        
+
+        .stTabs [data-baseweb="tab"] {
+            color: #000000 !important;
+            background-color: #e8ecf1 !important;
+        }
+
+        .stTabs [aria-selected="true"] {
+            background-color: #2E86AB !important;
+            color: #ffffff !important;
+        }
+
         .stButton>button {
-            background: linear-gradient(135deg, var(--primary) 0%, #1a6f8b 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1a6f8b 100%);
             color: white;
             padding: 0.5em 2em;
             border-radius: 30px;
@@ -49,52 +70,22 @@ st.markdown('''
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             transition: all 0.3s ease;
         }
-        
+
         .stButton>button:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 8px rgba(0,0,0,0.15);
         }
-        
-        .stSelectbox, .stNumberInput {
-            border-radius: 10px !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 10px;
-        }
-        
-        .stTabs [data-baseweb="tab"] {
-            padding: 8px 20px;
-            border-radius: 20px !important;
-            background-color: white;
-            transition: all 0.3s ease;
-        }
-        
-        .stTabs [aria-selected="true"] {
-            background-color: var(--primary) !important;
-            color: white !important;
-        }
-        
-        .metric-card {
-            background: white;
+
+        .metric-card, .prediction-card {
+            background-color: #ffffff !important;
+            color: #000000 !important;
             border-radius: 15px;
             padding: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: all 0.3s ease;
         }
-        
-        .metric-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-        }
-        
-        .prediction-card {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.08);
-            border-left: 5px solid var(--primary);
+
+        .block-container {
+            padding: 2rem 2rem;
         }
     </style>
 ''', unsafe_allow_html=True)

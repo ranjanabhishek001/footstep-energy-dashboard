@@ -3,215 +3,190 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
-from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.cluster import KMeans
-from sklearn.metrics import (
-    mean_squared_error, r2_score, accuracy_score,
-    classification_report, confusion_matrix, roc_curve, auc
-)
-from xgboost import XGBRegressor, XGBClassifier
 import plotly.express as px
-import plotly.graph_objects as go
-import serial
-import time
 
-st.set_page_config(page_title="Smart AutoML Dashboard", layout="wide")
-st.title("🤖 Smart AutoML Dashboard")
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from xgboost import XGBRegressor
+from sklearn.metrics import mean_squared_error, r2_score
 
-# Optional live sensor data section
-st.sidebar.subheader("📡 Live Sensor Data")
-live_mode = st.sidebar.checkbox("Enable Live Sensor Feed")
+st.set_page_config(page_title="ML Dashboard", layout="wide")
+st.markdown("""
+    <style>
+        .main {
+            background-color: #F0F2F6;
+            color: #262730;
+        }
+        .block-container {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+        .stButton>button {
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 12px;
+            padding: 10px 24px;
+        }
+        .stSelectbox, .stTextInput, .stNumberInput {
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+        }
+        h1, h2, h3, h4 {
+            color: #003366;
+        }
+        .stDataFrame {
+            background-color: #ffffff;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-if live_mode:
-    try:
-        port = st.sidebar.text_input("Enter COM port (e.g., COM3 or /dev/ttyUSB0)", value="COM3")
-        baud = st.sidebar.number_input("Baud Rate", value=9600)
-        duration = st.sidebar.slider("How many seconds to collect?", 1, 30, 5)
+st.title("Displacement Force Prediction Dashboard")
+st.write("Upload your dataset with features like footstep frequency, weight, and target displacement force.")
 
-        if st.sidebar.button("Start Reading Sensor"):
-            ser = serial.Serial(port, baud, timeout=1)
-            time.sleep(2)
-            st.write("Reading from Arduino...")
-            data = []
-            start_time = time.time()
-            with st.spinner("Collecting data..."):
-                while time.time() - start_time < duration:
-                    if ser.in_waiting > 0:
-                        line = ser.readline().decode('utf-8').strip()
-                        st.text(f"Raw: {line}")
-                        try:
-                            voltage = float(line)
-                            timestamp = time.time()
-                            data.append([timestamp, voltage])
-                        except:
-                            pass
-            ser.close()
-            if data:
-                df_live = pd.DataFrame(data, columns=['Timestamp', 'Voltage'])
-                st.subheader("📊 Live Voltage Data")
-                st.line_chart(df_live.set_index('Timestamp'))
-                st.session_state.live_data = df_live
-    except Exception as e:
-        st.error(f"Error: {e}")
-
-uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
-
+uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
-    st.subheader("Dataset Preview")
+    st.write("Preview of Dataset:")
     st.dataframe(df)
 
-    st.subheader("Visualize Dataset")
-    if st.checkbox("Show Missing Values Heatmap"):
-        fig, ax = plt.subplots()
-        sns.heatmap(df.isnull(), cbar=False, cmap='viridis', ax=ax)
-        st.pyplot(fig)
+    if df.isnull().sum().sum() > 0:
+        st.warning("Dataset contains missing values. They will be dropped.")
+        df = df.dropna()
 
-    if st.checkbox("Show Correlation Heatmap"):
-        fig, ax = plt.subplots()
-        sns.heatmap(df.corr(), annot=True, cmap="coolwarm", ax=ax)
-        st.pyplot(fig)
+    numeric_columns = df.select_dtypes(include=np.number).columns.tolist()
+    target = st.selectbox("Select the target column", numeric_columns)
+    features = st.multiselect("Select feature columns", [col for col in numeric_columns if col != target])
 
-    if st.checkbox("Pairplot of features"):
-        sampled_df = df.sample(min(200, len(df)))
-        fig = sns.pairplot(sampled_df)
-        st.pyplot(fig)
-
-    if st.checkbox("Distribution of Numeric Features"):
-        numeric_cols = df.select_dtypes(include=np.number).columns
-        for col in numeric_cols:
-            fig = px.histogram(df, x=col, nbins=30, title=f"Distribution of {col}")
-            st.plotly_chart(fig)
-
-    if st.checkbox("Box Plots for Outlier Detection"):
-        numeric_cols = df.select_dtypes(include=np.number).columns
-        for col in numeric_cols:
-            fig = px.box(df, y=col, title=f"Boxplot of {col}")
-            st.plotly_chart(fig)
-
-    if st.checkbox("Violin Plots"):
-        numeric_cols = df.select_dtypes(include=np.number).columns
-        for col in numeric_cols:
-            fig = px.violin(df, y=col, box=True, title=f"Violin Plot of {col}")
-            st.plotly_chart(fig)
-
-    if st.checkbox("PCA Visualization"):
-        numeric_data = df.select_dtypes(include=np.number).dropna()
-        scaler = StandardScaler()
-        scaled_data = scaler.fit_transform(numeric_data)
-        pca = PCA(n_components=2)
-        components = pca.fit_transform(scaled_data)
-        pca_df = pd.DataFrame(components, columns=['PC1', 'PC2'])
-        fig = px.scatter(pca_df, x='PC1', y='PC2', title="PCA 2D Projection")
-        st.plotly_chart(fig)
-
-    if st.checkbox("t-SNE Visualization"):
-        numeric_data = df.select_dtypes(include=np.number).dropna()
-        scaler = StandardScaler()
-        scaled_data = scaler.fit_transform(numeric_data)
-        tsne = TSNE(n_components=2, perplexity=30, n_iter=1000, random_state=42)
-        tsne_result = tsne.fit_transform(scaled_data)
-        tsne_df = pd.DataFrame(tsne_result, columns=['TSNE1', 'TSNE2'])
-        fig = px.scatter(tsne_df, x='TSNE1', y='TSNE2', title="t-SNE Projection")
-        st.plotly_chart(fig)
-
-    if st.checkbox("KMeans Clustering"):
-        numeric_data = df.select_dtypes(include=np.number).dropna()
-        kmeans = KMeans(n_clusters=3, random_state=0)
-        clusters = kmeans.fit_predict(numeric_data)
-        df['Cluster'] = clusters
-        fig = px.scatter_matrix(df, dimensions=numeric_data.columns, color='Cluster', title="KMeans Clustering")
-        st.plotly_chart(fig)
-
-    st.subheader("Select Target Column")
-    target_col = st.selectbox("Target (what you want to predict)", df.columns)
-
-    if target_col:
-        all_features = df.drop(columns=[target_col]).columns.tolist()
-        selected_features = st.multiselect("Select Features to Include in Model", all_features, default=all_features)
-
-        X = df[selected_features]
-        y = df[target_col]
-
-        for col in X.select_dtypes(include='object').columns:
-            X[col] = LabelEncoder().fit_transform(X[col])
-
-        if y.dtype == 'object':
-            y = LabelEncoder().fit_transform(y)
-
+    if features:
+        X = df[features]
+        y = df[target]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        task_type = "Regression" if len(np.unique(y)) > 10 and y.dtype != "object" else "Classification"
-        st.markdown(f"### 🔍 Detected Problem Type: **{task_type}**")
+        st.subheader("Model Training & Evaluation")
 
-        if task_type == "Regression":
-            model_option = st.selectbox("Choose a regression model", [
-                "Linear Regression", "Random Forest Regressor", "XGBoost Regressor"])
-            if model_option == "Linear Regression":
-                model = LinearRegression()
-            elif model_option == "Random Forest Regressor":
-                n_estimators = st.slider("n_estimators (Random Forest)", 10, 200, 100)
-                model = RandomForestRegressor(n_estimators=n_estimators)
-            else:
-                n_estimators = st.slider("n_estimators (XGBoost)", 10, 200, 100)
-                model = XGBRegressor(objective="reg:squarederror", n_estimators=n_estimators)
-        else:
-            model_option = st.selectbox("Choose a classification model", [
-                "Logistic Regression", "Random Forest Classifier", "XGBoost Classifier"])
-            if model_option == "Logistic Regression":
-                model = LogisticRegression(max_iter=1000)
-            elif model_option == "Random Forest Classifier":
-                n_estimators = st.slider("n_estimators (Random Forest)", 10, 200, 100)
-                model = RandomForestClassifier(n_estimators=n_estimators)
-            else:
-                n_estimators = st.slider("n_estimators (XGBoost)", 10, 200, 100)
-                model = XGBClassifier(use_label_encoder=False, eval_metric='logloss', n_estimators=n_estimators)
+        models = {
+            "Linear Regression": LinearRegression(),
+            "Random Forest": RandomForestRegressor(),
+            "XGBoost": XGBRegressor()
+        }
 
-        if st.button("Train Model"):
+        for name, model in models.items():
             model.fit(X_train, y_train)
             y_pred = model.predict(X_test)
+            mse = mean_squared_error(y_test, y_pred)
+            r2 = r2_score(y_test, y_pred)
+            st.markdown(f"**{name}** - R²: {r2:.4f}, MSE: {mse:.4f}")
 
-            st.subheader("📈 Model Performance")
+        st.subheader("Try It Yourself!")
+        user_input = [st.number_input(f"Enter {col}", value=float(X[col].mean())) for col in features]
+        chosen_model_name = st.selectbox("Choose a model for prediction", list(models.keys()))
+        chosen_model = models[chosen_model_name]
+        prediction = chosen_model.predict([user_input])[0]
+        st.success(f"Predicted Displacement Force: {prediction:.2f}")
 
-            if task_type == "Regression":
-                st.write(f"**R² Score:** {r2_score(y_test, y_pred):.2f}")
-                st.write(f"**MSE:** {mean_squared_error(y_test, y_pred):.2f}")
-                fig = px.scatter(x=y_test, y=y_pred, labels={'x': 'Actual', 'y': 'Predicted'}, title="Actual vs Predicted")
-                st.plotly_chart(fig)
-            else:
-                st.write(f"**Accuracy:** {accuracy_score(y_test, y_pred):.2f}")
-                st.text("Classification Report:")
-                st.text(classification_report(y_test, y_pred))
+        st.header("Visualizations and Insights")
 
-                cm = confusion_matrix(y_test, y_pred)
+        if st.checkbox("Missing Values Heatmap"):
+            fig, ax = plt.subplots()
+            sns.heatmap(df.isnull(), cbar=False, cmap='viridis')
+            st.pyplot(fig)
+            st.info("Highlights where data is missing. Helps identify gaps that may need preprocessing.")
+
+        if st.checkbox("Correlation Heatmap"):
+            fig, ax = plt.subplots()
+            sns.heatmap(df.corr(), annot=True, cmap='coolwarm')
+            st.pyplot(fig)
+            st.info("Correlation heatmap shows relationships between numeric features. High absolute values (close to 1 or -1) indicate strong correlations.")
+
+        if st.checkbox("Pairplot"):
+            fig = sns.pairplot(df[numeric_columns])
+            st.pyplot(fig)
+            st.info("Pairplot helps visually assess relationships between all numeric variables, aiding in understanding patterns and potential outliers.")
+
+        if st.checkbox("Box Plot for Each Feature"):
+            for col in numeric_columns:
                 fig, ax = plt.subplots()
-                sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax)
-                ax.set_xlabel("Predicted")
-                ax.set_ylabel("Actual")
-                ax.set_title("Confusion Matrix")
+                sns.boxplot(x=df[col], ax=ax)
                 st.pyplot(fig)
+                st.info(f"Box plot for **{col}** shows distribution and outliers.")
 
-                if len(np.unique(y_test)) == 2:
-                    fpr, tpr, _ = roc_curve(y_test, model.predict_proba(X_test)[:, 1])
-                    roc_auc = auc(fpr, tpr)
-                    fig, ax = plt.subplots()
-                    ax.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
-                    ax.plot([0, 1], [0, 1], 'k--')
-                    ax.set_xlabel("False Positive Rate")
-                    ax.set_ylabel("True Positive Rate")
-                    ax.set_title("ROC Curve")
-                    ax.legend()
-                    st.pyplot(fig)
+        if st.checkbox("Distribution Plots"):
+            for col in numeric_columns:
+                fig, ax = plt.subplots()
+                sns.histplot(df[col], kde=True, ax=ax)
+                st.pyplot(fig)
+                st.info(f"Distribution of **{col}** shows its frequency and skewness.")
 
-            if hasattr(model, 'feature_importances_'):
-                importance_df = pd.DataFrame({
-                    'Feature': X.columns,
-                    'Importance': model.feature_importances_
-                }).sort_values(by="Importance", ascending=False)
-                fig = px.bar(importance_df, x='Importance', y='Feature', orientation='h', title="Feature Importance")
-                st.plotly_chart(fig)
+        if st.checkbox("Feature Importance (Random Forest)"):
+            model_rf = RandomForestRegressor()
+            model_rf.fit(X, y)
+            importances = pd.Series(model_rf.feature_importances_, index=X.columns)
+            fig, ax = plt.subplots()
+            importances.sort_values().plot(kind='barh', ax=ax)
+            st.pyplot(fig)
+            st.info("Feature importance shows which inputs influence the prediction most in the Random Forest model.")
+
+        if st.checkbox("Dendrogram - Hierarchical Clustering"):
+            import scipy.cluster.hierarchy as sch
+            from scipy.spatial.distance import pdist
+
+            numeric_data = df.select_dtypes(include=np.number).dropna()
+            distance_matrix = pdist(numeric_data)
+            linkage_matrix = sch.linkage(distance_matrix, method='ward')
+
+            fig, ax = plt.subplots(figsize=(12, 6))
+            sch.dendrogram(linkage_matrix, ax=ax)
+            st.pyplot(fig)
+            st.info("The dendrogram shows how samples are hierarchically clustered based on similarity. Useful for understanding nested clusters and optimal group counts.")
+
+        if st.checkbox("SHAP Values - Feature Importance (XGBoost)"):
+            import shap
+            shap.initjs()
+
+            df_clean = df.dropna()
+            X = df_clean.select_dtypes(include=np.number).drop(columns=[df_clean.columns[-1]])
+            y = df_clean[df_clean.columns[-1]]
+
+            model = XGBRegressor()
+            model.fit(X, y)
+            explainer = shap.Explainer(model, X)
+            shap_values = explainer(X)
+
+            st.subheader("SHAP Summary Plot")
+            fig_summary = shap.plots.beeswarm(shap_values, show=False)
+            st.pyplot(bbox_inches='tight', dpi=300)
+            st.info("SHAP values explain the contribution of each feature to a prediction. The beeswarm plot highlights which features have the biggest impact across the dataset.")
+
+        if st.checkbox("UMAP Projection"):
+            import umap
+            numeric_data = df.select_dtypes(include=np.number).dropna()
+            reducer = umap.UMAP(random_state=42)
+            embedding = reducer.fit_transform(numeric_data)
+            umap_df = pd.DataFrame(embedding, columns=['UMAP1', 'UMAP2'])
+            fig = px.scatter(umap_df, x='UMAP1', y='UMAP2', title="UMAP Dimensionality Reduction")
+            st.plotly_chart(fig)
+            st.info("UMAP projects high-dimensional data into 2D while preserving the global structure and clustering. Great for visualizing complex datasets.")
+
+        if st.checkbox("RadViz Visualization"):
+            from pandas.plotting import radviz
+            df_clean = df.dropna()
+            if df_clean.select_dtypes(include='object').shape[1] > 0:
+                target_col = df_clean.select_dtypes(include='object').columns[0]
+                fig, ax = plt.subplots()
+                radviz(df_clean, target=target_col, ax=ax)
+                st.pyplot(fig)
+                st.info("RadViz helps visualize multivariate data by mapping numeric features to points on a circle. Good for spotting clusters across categorical targets.")
+            else:
+                st.warning("RadViz requires at least one categorical column in your dataset.")
+
+        if st.checkbox("Interactive Feature Filter"):
+            numeric_cols = df.select_dtypes(include=np.number).columns
+            selected_col = st.selectbox("Select feature to filter", numeric_cols)
+            min_val = float(df[selected_col].min())
+            max_val = float(df[selected_col].max())
+            user_range = st.slider("Filter range", min_val, max_val, (min_val, max_val))
+            filtered_df = df[(df[selected_col] >= user_range[0]) & (df[selected_col] <= user_range[1])]
+            st.dataframe(filtered_df)
+            st.info(f"Filtered data based on {selected_col} values between {user_range[0]} and {user_range[1]}. Useful for interactive exploration.")

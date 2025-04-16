@@ -45,15 +45,27 @@ st.markdown("""
 st.title("Displacement Force Prediction Dashboard")
 st.write("Upload your dataset with features like footstep frequency, weight, and target displacement force.")
 
+@st.cache_data
+def load_data(file):
+    df = pd.read_csv(file)
+    return df.dropna()
+
+@st.cache_resource
+def train_models(X_train, y_train):
+    models = {
+        "Linear Regression": LinearRegression(),
+        "Random Forest": RandomForestRegressor(),
+        "XGBoost": XGBRegressor()
+    }
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+    return models
+
 uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
 if uploaded_file:
-    df = pd.read_csv(uploaded_file)
+    df = load_data(uploaded_file)
     st.write("Preview of Dataset:")
     st.dataframe(df)
-
-    if df.isnull().sum().sum() > 0:
-        st.warning("Dataset contains missing values. They will be dropped.")
-        df = df.dropna()
 
     numeric_columns = df.select_dtypes(include=np.number).columns.tolist()
     target = st.selectbox("Select the target column", numeric_columns)
@@ -66,14 +78,9 @@ if uploaded_file:
 
         st.subheader("Model Training & Evaluation")
 
-        models = {
-            "Linear Regression": LinearRegression(),
-            "Random Forest": RandomForestRegressor(),
-            "XGBoost": XGBRegressor()
-        }
+        models = train_models(X_train, y_train)
 
         for name, model in models.items():
-            model.fit(X_train, y_train)
             y_pred = model.predict(X_test)
             mse = mean_squared_error(y_test, y_pred)
             r2 = r2_score(y_test, y_pred)
@@ -127,66 +134,3 @@ if uploaded_file:
             importances.sort_values().plot(kind='barh', ax=ax)
             st.pyplot(fig)
             st.info("Feature importance shows which inputs influence the prediction most in the Random Forest model.")
-
-        if st.checkbox("Dendrogram - Hierarchical Clustering"):
-            import scipy.cluster.hierarchy as sch
-            from scipy.spatial.distance import pdist
-
-            numeric_data = df.select_dtypes(include=np.number).dropna()
-            distance_matrix = pdist(numeric_data)
-            linkage_matrix = sch.linkage(distance_matrix, method='ward')
-
-            fig, ax = plt.subplots(figsize=(12, 6))
-            sch.dendrogram(linkage_matrix, ax=ax)
-            st.pyplot(fig)
-            st.info("The dendrogram shows how samples are hierarchically clustered based on similarity. Useful for understanding nested clusters and optimal group counts.")
-
-        if st.checkbox("SHAP Values - Feature Importance (XGBoost)"):
-            import shap
-            shap.initjs()
-
-            df_clean = df.dropna()
-            X = df_clean.select_dtypes(include=np.number).drop(columns=[df_clean.columns[-1]])
-            y = df_clean[df_clean.columns[-1]]
-
-            model = XGBRegressor()
-            model.fit(X, y)
-            explainer = shap.Explainer(model, X)
-            shap_values = explainer(X)
-
-            st.subheader("SHAP Summary Plot")
-            fig_summary = shap.plots.beeswarm(shap_values, show=False)
-            st.pyplot(bbox_inches='tight', dpi=300)
-            st.info("SHAP values explain the contribution of each feature to a prediction. The beeswarm plot highlights which features have the biggest impact across the dataset.")
-
-        if st.checkbox("UMAP Projection"):
-            import umap
-            numeric_data = df.select_dtypes(include=np.number).dropna()
-            reducer = umap.UMAP(random_state=42)
-            embedding = reducer.fit_transform(numeric_data)
-            umap_df = pd.DataFrame(embedding, columns=['UMAP1', 'UMAP2'])
-            fig = px.scatter(umap_df, x='UMAP1', y='UMAP2', title="UMAP Dimensionality Reduction")
-            st.plotly_chart(fig)
-            st.info("UMAP projects high-dimensional data into 2D while preserving the global structure and clustering. Great for visualizing complex datasets.")
-
-        if st.checkbox("RadViz Visualization"):
-            from pandas.plotting import radviz
-            df_clean = df.dropna()
-            if df_clean.select_dtypes(include='object').shape[1] > 0:
-                target_col = df_clean.select_dtypes(include='object').columns[0]
-                fig, ax = plt.subplots()
-                radviz(df_clean, target=target_col, ax=ax)
-                st.pyplot(fig)
-                st.info("RadViz helps visualize multivariate data by mapping numeric features to points on a circle. Good for spotting clusters across categorical targets.")
-            else:
-                st.warning("RadViz requires at least one categorical column in your dataset.")
-
-        if st.checkbox("Interactive Feature Filter"):
-            numeric_cols = df.select_dtypes(include=np.number).columns
-            selected_col = st.selectbox("Select feature to filter", numeric_cols)
-            min_val = float(df[selected_col].min())
-            max_val = float(df[selected_col].max())
-            user_range = st.slider("Filter range", min_val, max_val, (min_val, max_val))
-            filtered_df = df[(df[selected_col] >= user_range[0]) & (df[selected_col] <= user_range[1])]
-            st.dataframe(filtered_df)
-            st.info(f"Filtered data based on {selected_col} values between {user_range[0]} and {user_range[1]}. Useful for interactive exploration.")

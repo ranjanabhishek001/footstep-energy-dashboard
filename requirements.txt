@@ -1,3 +1,4 @@
+ipython
 shap
 streamlit
 pandas

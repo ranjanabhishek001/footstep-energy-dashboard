@@ -20,7 +20,7 @@ st.write("Upload your dataset containing features like footstep frequency, weigh
 @st.cache_data
 def load_data(file):
     df = pd.read_csv(file)
-    
+
     # Handle categorical data (Label Encoding)
     categorical_columns = df.select_dtypes(include=['object']).columns.tolist()
     encoder = LabelEncoder()
@@ -108,7 +108,7 @@ if uploaded_file:
                 st.pyplot(fig)
                 st.info(f"Distribution of **{col}** shows its frequency and skewness, which is important for understanding data.")
 
-        if st.checkbox("Feature Importance (Random Forest)"):
+        if st.checkbox("Feature Importance (Random Forest"):
             model_rf = RandomForestRegressor()
             model_rf.fit(X, y)
             importances = pd.Series(model_rf.feature_importances_, index=X.columns)
@@ -117,13 +117,8 @@ if uploaded_file:
             st.pyplot(fig)
             st.info("Feature importance from the Random Forest model indicates which features most influence the target variable.")
 
-        if st.checkbox("Interactive Scatter Plot"):
-            fig = px.scatter(df, x=features[0], y=target, title=f"Scatter plot between {features[0]} and {target}")
-            st.plotly_chart(fig)
-            st.info(f"Interactive scatter plot between **{features[0]}** and **{target}** helps visualize the relationship.")
-
-        if st.checkbox("Energy Output vs Footstep Frequency"):
-            fig = px.scatter(df, x='Step_Frequency (steps/sec)', y='Energy_Output (mA)', title="Energy Output vs Footstep Frequency")
-            st.plotly_chart(fig)
-            st.info("This plot helps visualize how footstep frequency correlates with energy output.")
-
+        if st.checkbox("Target vs Feature (Interactive Plot)"):
+            for feature in features:
+                fig = px.scatter(df, x=feature, y=target, title=f"{target} vs {feature}", labels={feature: feature, target: target})
+                st.plotly_chart(fig)
+                st.info(f"This plot shows how the selected feature **{feature}** influences the target **{target}**.")

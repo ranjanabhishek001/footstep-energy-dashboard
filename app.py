@@ -1,379 +1,162 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor
-import xgboost as xgb
+import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+from sklearn.preprocessing import LabelEncoder
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.metrics import (
+    mean_squared_error, r2_score, accuracy_score,
+    classification_report, confusion_matrix, roc_curve, auc
+)
+from xgboost import XGBRegressor, XGBClassifier
 import plotly.express as px
-import plotly.graph_objects as go
-from streamlit_extras.metric_cards import style_metric_cards
+import serial
+import time
 
-# --- Custom CSS ---
-st.markdown('''
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
-        
-        :root {
-            --primary: #2E86AB;
-            --secondary: #F18F01;
-            --accent: #C73E1D;
-            --light: #F0F2F6;
-            --dark: #2B2D42;
-        }
-        
-        * {
-            font-family: 'Poppins', sans-serif;
-        }
-        
-        .main {
-            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 100%);
-        }
-        
-        h1, h2, h3 {
-            color: var(--primary);
-            font-weight: 600;
-        }
-        
-        .stButton>button {
-            background: linear-gradient(135deg, var(--primary) 0%, #1a6f8b 100%);
-            color: white;
-            padding: 0.5em 2em;
-            border-radius: 30px;
-            border: none;
-            font-weight: 500;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
-        }
-        
-        .stButton>button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
-        }
-        
-        .stSelectbox, .stNumberInput {
-            border-radius: 10px !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 10px;
-        }
-        
-        .stTabs [data-baseweb="tab"] {
-            padding: 8px 20px;
-            border-radius: 20px !important;
-            background-color: white;
-            transition: all 0.3s ease;
-        }
-        
-        .stTabs [aria-selected="true"] {
-            background-color: var(--primary) !important;
-            color: white !important;
-        }
-        
-        .metric-card {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: all 0.3s ease;
-        }
-        
-        .metric-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-        }
-        
-        .prediction-card {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.08);
-            border-left: 5px solid var(--primary);
-        }
-    </style>
-''', unsafe_allow_html=True)
+st.set_page_config(page_title="Smart AutoML Dashboard", layout="wide")
+st.title("🤖 Smart AutoML Dashboard")
 
-# --- Title ---
-st.title('👣 Footstep Energy Harvesting Dashboard')
-st.markdown('''
-    <div style='background: linear-gradient(135deg, #2E86AB 0%, #1a6f8b 100%); 
-            padding: 15px; border-radius: 15px; color: white; margin-bottom: 30px;'>
-        <h3 style='color: white; margin: 0;'>Predicting Energy Output from Footsteps using Machine Learning</h3>
-    </div>
-''', unsafe_allow_html=True)
+# Optional live sensor data section
+st.sidebar.subheader("📡 Live Sensor Data")
+live_mode = st.sidebar.checkbox("Enable Live Sensor Feed")
 
-# --- Load Data ---
-@st.cache_data
-def load_data():
-    return pd.read_csv('energy_harvesting_data.csv')
+if live_mode:
+    try:
+        port = st.sidebar.text_input("Enter COM port (e.g., COM3 or /dev/ttyUSB0)", value="COM3")
+        baud = st.sidebar.number_input("Baud Rate", value=9600)
+        duration = st.sidebar.slider("How many seconds to collect?", 1, 30, 5)
 
-df = load_data()
+        if st.sidebar.button("Start Reading Sensor"):
+            ser = serial.Serial(port, baud, timeout=1)
+            time.sleep(2)
+            st.write("Reading from Arduino...")
+            data = []
+            start_time = time.time()
+            with st.spinner("Collecting data..."):
+                while time.time() - start_time < duration:
+                    if ser.in_waiting > 0:
+                        line = ser.readline().decode('utf-8').strip()
+                        st.text(f"Raw: {line}")
+                        try:
+                            voltage = float(line)
+                            timestamp = time.time()
+                            data.append([timestamp, voltage])
+                        except:
+                            pass
+            ser.close()
+            if data:
+                df_live = pd.DataFrame(data, columns=['Timestamp', 'Voltage'])
+                st.subheader("📊 Live Voltage Data")
+                st.line_chart(df_live.set_index('Timestamp'))
+                st.session_state.live_data = df_live
+    except Exception as e:
+        st.error(f"Error: {e}")
 
-# --- Initialize Models ---
-@st.cache_resource
-def get_models():
-    models = {
-        'Linear Regression': LinearRegression(),
-        'Random Forest': RandomForestRegressor(n_estimators=100, random_state=42),
-        'XGBoost': xgb.XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42)
-    }
-    return models
+uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
 
-models = get_models()
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
+    st.subheader("Dataset Preview")
+    st.dataframe(df)
 
-# --- Feature Selection ---
-X = df.drop(columns=['Energy_Output (mA)'])
-y = df['Energy_Output (mA)']
+    st.subheader("Visualize Dataset")
+    if st.checkbox("Show Missing Values Heatmap"):
+        fig, ax = plt.subplots()
+        sns.heatmap(df.isnull(), cbar=False, cmap='viridis', ax=ax)
+        st.pyplot(fig)
 
-# --- Split Data ---
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    if st.checkbox("Show Correlation Heatmap"):
+        fig, ax = plt.subplots()
+        sns.heatmap(df.corr(), annot=True, cmap="coolwarm", ax=ax)
+        st.pyplot(fig)
 
-# --- Scale Features ---
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
+    st.subheader("Select Target Column")
+    target_col = st.selectbox("Target (what you want to predict)", df.columns)
 
-# --- Sidebar Info ---
-st.sidebar.title('🔧 Settings')
-model_option = st.sidebar.selectbox('Select Model', list(models.keys()))
-show_all_models = st.sidebar.checkbox('Compare all models', value=True)
+    if target_col:
+        all_features = df.drop(columns=[target_col]).columns.tolist()
+        selected_features = st.multiselect("Select Features to Include in Model", all_features, default=all_features)
 
-# --- Train Selected Model ---
-model = models[model_option]
-model.fit(X_train_scaled, y_train)
-y_pred = model.predict(X_test_scaled)
+        X = df[selected_features]
+        y = df[target_col]
 
-# --- Evaluation Metrics ---
-mse = mean_squared_error(y_test, y_pred)
-rmse = np.sqrt(mse)
-r2 = r2_score(y_test, y_pred)
-mae = mean_absolute_error(y_test, y_pred)
+        for col in X.select_dtypes(include='object').columns:
+            X[col] = LabelEncoder().fit_transform(X[col])
 
-# --- Tabs ---
-tab1, tab2, tab3 = st.tabs(['📊 Predictions', '📈 Visualizations', '🔍 Model Comparison'])
+        if y.dtype == 'object':
+            y = LabelEncoder().fit_transform(y)
 
-with tab1:
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown('''<div class='metric-card'>
-                    <h3>R² Score</h3>
-                    <h2 style='color: var(--primary);'>{:.3f}</h2>
-                    </div>'''.format(r2), unsafe_allow_html=True)
-    with col2:
-        st.markdown('''<div class='metric-card'>
-                    <h3>RMSE</h3>
-                    <h2 style='color: var(--accent);'>{:.2f} mA</h2>
-                    </div>'''.format(rmse), unsafe_allow_html=True)
-    with col3:
-        st.markdown('''<div class='metric-card'>
-                    <h3>MAE</h3>
-                    <h2 style='color: var(--secondary);'>{:.2f} mA</h2>
-                    </div>'''.format(mae), unsafe_allow_html=True)
-    
-    style_metric_cards()
-    
-    st.markdown('---')
-    
-    # Predict from user input
-    st.markdown('### 🔍 Make a Prediction')
-    input_cols = st.columns(2)
-    input_data = {}
-    
-    for i, col in enumerate(X.columns):
-        with input_cols[i % 2]:
-            input_data[col] = st.number_input(
-                f'Enter {col}', 
-                value=float(df[col].mean()),
-                min_value=float(df[col].min()),
-                max_value=float(df[col].max()),
-                step=0.1
-            )
-    
-    if st.button('Predict Energy Output'):
-        input_df = pd.DataFrame([input_data])
-        input_scaled = scaler.transform(input_df)
-        
-        if show_all_models:
-            # Compare predictions from all models
-            predictions = {}
-            for name, m in models.items():
-                m.fit(X_train_scaled, y_train)  # Retrain to ensure fairness
-                predictions[name] = m.predict(input_scaled)[0]
-            
-            # Create comparison chart
-            fig = go.Figure()
-            sorted_preds = sorted(predictions.items(), key=lambda x: x[1], reverse=True)
-            names = [x[0] for x in sorted_preds]
-            values = [x[1] for x in sorted_preds]
-            
-            fig.add_trace(go.Bar(
-                x=values,
-                y=names,
-                orientation='h',
-                marker_color=['#2E86AB', '#F18F01', '#C73E1D'],
-                text=[f'{v:.2f} mA' for v in values],
-                textposition='auto'
-            ))
-            
-            fig.update_layout(
-                title='Model Comparison for Current Input',
-                xaxis_title='Predicted Energy Output (mA)',
-                yaxis_title='Model',
-                height=300,
-                margin=dict(l=20, r=20, t=40, b=20)
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Show best model
-            best_model = max(predictions.items(), key=lambda x: x[1])
-            st.markdown('''<div class='prediction-card'>
-                    <h3>Best Model for This Input</h3>
-                    <p style='font-size: 24px; margin: 10px 0;'><b>{}</b></p>
-                    <p style='font-size: 18px;'>Predicted Output: <b style='color: var(--accent);'>{:.2f} mA</b></p>
-                </div>'''.format(best_model[0], best_model[1]), unsafe_allow_html=True)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        task_type = "Regression" if len(np.unique(y)) > 10 and y.dtype != "object" else "Classification"
+        st.markdown(f"### 🔍 Detected Problem Type: **{task_type}**")
+
+        if task_type == "Regression":
+            model_option = st.selectbox("Choose a regression model", [
+                "Linear Regression", "Random Forest Regressor", "XGBoost Regressor"])
+            if model_option == "Linear Regression":
+                model = LinearRegression()
+            elif model_option == "Random Forest Regressor":
+                n_estimators = st.slider("n_estimators (Random Forest)", 10, 200, 100)
+                model = RandomForestRegressor(n_estimators=n_estimators)
+            else:
+                n_estimators = st.slider("n_estimators (XGBoost)", 10, 200, 100)
+                model = XGBRegressor(objective="reg:squarederror", n_estimators=n_estimators)
         else:
-            # Single model prediction
-            prediction = model.predict(input_scaled)[0]
-            st.markdown('''<div class='prediction-card'>
-                    <h3>Prediction Result</h3>
-                    <p style='font-size: 24px; margin: 10px 0;'><b>{}</b></p>
-                    <p style='font-size: 18px;'>Predicted Output: <b style='color: var(--accent);'>{:.2f} mA</b></p>
-                </div>'''.format(model_option, prediction), unsafe_allow_html=True)
+            model_option = st.selectbox("Choose a classification model", [
+                "Logistic Regression", "Random Forest Classifier", "XGBoost Classifier"])
+            if model_option == "Logistic Regression":
+                model = LogisticRegression(max_iter=1000)
+            elif model_option == "Random Forest Classifier":
+                n_estimators = st.slider("n_estimators (Random Forest)", 10, 200, 100)
+                model = RandomForestClassifier(n_estimators=n_estimators)
+            else:
+                n_estimators = st.slider("n_estimators (XGBoost)", 10, 200, 100)
+                model = XGBClassifier(use_label_encoder=False, eval_metric='logloss', n_estimators=n_estimators)
 
-with tab2:
-    st.markdown('### 🔬 Data Exploration')
-    
-    # Data summary
-    with st.expander('📋 Dataset Overview'):
-        st.dataframe(df.describe().style.background_gradient(cmap='Blues'))
-    
-    # Correlation Heatmap
-    st.markdown('#### 🔥 Correlation Heatmap')
-    fig1 = px.imshow(
-        df.corr(),
-        text_auto=True,
-        color_continuous_scale='RdBu',
-        aspect='auto'
-    )
-    st.plotly_chart(fig1, use_container_width=True)
-    
-    # Feature Distribution
-    st.markdown('#### 📊 Feature Distributions')
-    feature = st.selectbox('Select feature to visualize', X.columns)
-    
-    fig_dist = px.histogram(
-        df, 
-        x=feature, 
-        marginal='box',
-        color_discrete_sequence=['#2E86AB'],
-        title=f'Distribution of {feature}'
-    )
-    st.plotly_chart(fig_dist, use_container_width=True)
-    
-    # Feature vs Energy Output
-    st.markdown('#### ⚡ Feature vs Energy Output')
-    fig_scatter = px.scatter(
-        df,
-        x=feature,
-        y='Energy_Output (mA)',
-        trendline='lowess',
-        color_discrete_sequence=['#F18F01'],
-        title=f'{feature} vs Energy Output'
-    )
-    st.plotly_chart(fig_scatter, use_container_width=True)
-    
-    # Feature Importance (if tree-based model)
-    if model_option in ['Random Forest', 'XGBoost']:
-        st.markdown('#### 🧠 Feature Importance')
-        importance_df = pd.DataFrame({
-            'Feature': X.columns,
-            'Importance': model.feature_importances_
-        }).sort_values(by='Importance', ascending=True)
-        
-        fig_importance = px.bar(
-            importance_df,
-            x='Importance',
-            y='Feature',
-            orientation='h',
-            color='Importance',
-            color_continuous_scale='Blues',
-            title='Feature Importance'
-        )
-        st.plotly_chart(fig_importance, use_container_width=True)
+        if st.button("Train Model"):
+            model.fit(X_train, y_train)
+            y_pred = model.predict(X_test)
 
-with tab3:
-    st.markdown('### 🏆 Model Performance Comparison')
-    
-    # Train all models and collect metrics
-    metrics = []
-    for name, m in models.items():
-        m.fit(X_train_scaled, y_train)
-        y_pred = m.predict(X_test_scaled)
-        metrics.append({
-            'Model': name,
-            'R²': r2_score(y_test, y_pred),
-            'RMSE': np.sqrt(mean_squared_error(y_test, y_pred)),
-            'MAE': mean_absolute_error(y_test, y_pred)
-        })
-    
-    metrics_df = pd.DataFrame(metrics)
-    
-    # Display metrics table
-    st.dataframe(
-        metrics_df.style
-        .background_gradient(subset=['R²'], cmap='Greens')
-        .background_gradient(subset=['RMSE', 'MAE'], cmap='Reds_r')
-        .format({'R²': '{:.3f}', 'RMSE': '{:.2f}', 'MAE': '{:.2f}'}),
-        use_container_width=True
-    )
-    
-    # Interactive comparison chart
-    metric_to_compare = st.selectbox('Select metric to compare', ['R²', 'RMSE', 'MAE'])
-    
-    fig_compare = px.bar(
-        metrics_df,
-        x='Model',
-        y=metric_to_compare,
-        color='Model',
-        color_discrete_sequence=['#2E86AB', '#F18F01', '#C73E1D'],
-        text_auto='.2f',
-        title=f'Model Comparison by {metric_to_compare}'
-    )
-    st.plotly_chart(fig_compare, use_container_width=True)
-    
-    # Actual vs Predicted comparison
-    st.markdown('#### 📈 Actual vs Predicted Comparison')
-    
-    actual_vs_pred = []
-    for name, m in models.items():
-        m.fit(X_train_scaled, y_train)
-        y_pred = m.predict(X_test_scaled)
-        actual_vs_pred.append(pd.DataFrame({
-            'Model': name,
-            'Actual': y_test,
-            'Predicted': y_pred
-        }))
-    
-    actual_vs_pred_df = pd.concat(actual_vs_pred)
-    
-    fig_avp = px.scatter(
-        actual_vs_pred_df,
-        x='Actual',
-        y='Predicted',
-        color='Model',
-        facet_col='Model',
-        facet_col_wrap=3,
-        color_discrete_sequence=['#2E86AB', '#F18F01', '#C73E1D'],
-        trendline='lowess',
-        title='Actual vs Predicted Values Across Models'
-    )
-    st.plotly_chart(fig_avp, use_container_width=True)
+            st.subheader("📈 Model Performance")
 
+            if task_type == "Regression":
+                st.write(f"**R² Score:** {r2_score(y_test, y_pred):.2f}")
+                st.write(f"**MSE:** {mean_squared_error(y_test, y_pred):.2f}")
+                fig = px.scatter(x=y_test, y=y_pred, labels={'x': 'Actual', 'y': 'Predicted'}, title="Actual vs Predicted")
+                st.plotly_chart(fig)
+            else:
+                st.write(f"**Accuracy:** {accuracy_score(y_test, y_pred):.2f}")
+                st.text("Classification Report:")
+                st.text(classification_report(y_test, y_pred))
 
+                cm = confusion_matrix(y_test, y_pred)
+                fig, ax = plt.subplots()
+                sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax)
+                ax.set_xlabel("Predicted")
+                ax.set_ylabel("Actual")
+                ax.set_title("Confusion Matrix")
+                st.pyplot(fig)
+
+                if len(np.unique(y_test)) == 2:
+                    fpr, tpr, _ = roc_curve(y_test, model.predict_proba(X_test)[:, 1])
+                    roc_auc = auc(fpr, tpr)
+                    fig, ax = plt.subplots()
+                    ax.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
+                    ax.plot([0, 1], [0, 1], 'k--')
+                    ax.set_xlabel("False Positive Rate")
+                    ax.set_ylabel("True Positive Rate")
+                    ax.set_title("ROC Curve")
+                    ax.legend()
+                    st.pyplot(fig)
+
+            if hasattr(model, 'feature_importances_'):
+                importance_df = pd.DataFrame({
+                    'Feature': X.columns,
+                    'Importance': model.feature_importances_
+                }).sort_values(by="Importance", ascending=False)
+                fig = px.bar(importance_df, x='Importance', y='Feature', orientation='h', title="Feature Importance")
+                st.plotly_chart(fig)

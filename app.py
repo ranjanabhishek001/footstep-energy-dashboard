@@ -10,16 +10,25 @@ from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 
-# Caching for optimization
+# Caching for data loading
 @st.cache_data
 def load_data(uploaded_file):
     return pd.read_csv(uploaded_file)
 
-# Caching for model training
+# Caching for model training (make sure the models are only trained once)
 @st.cache_resource
-def train_model(_model, X_train, y_train):
-    _model.fit(X_train, y_train)
-    return _model
+def train_models(X_train, y_train):
+    models = {
+        "Linear Regression": LinearRegression(),
+        "Random Forest": RandomForestRegressor(),
+        "XGBoost": XGBRegressor()
+    }
+
+    # Fit models
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+
+    return models
 
 st.set_page_config(page_title="Energy Generation Dashboard", layout="wide")
 
@@ -51,14 +60,10 @@ if uploaded_file:
 
         st.subheader("Model Training & Evaluation")
 
-        models = {
-            "Linear Regression": LinearRegression(),
-            "Random Forest": RandomForestRegressor(),
-            "XGBoost": XGBRegressor()
-        }
+        # Train models
+        models = train_models(X_train, y_train)
 
         for name, model in models.items():
-            model = train_model(model, X_train, y_train)
             y_pred = model.predict(X_test)
             mse = mean_squared_error(y_test, y_pred)
             r2 = r2_score(y_test, y_pred)

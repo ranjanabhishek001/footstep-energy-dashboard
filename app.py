@@ -4,15 +4,19 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.cluster import KMeans
 from sklearn.metrics import (
     mean_squared_error, r2_score, accuracy_score,
     classification_report, confusion_matrix, roc_curve, auc
 )
 from xgboost import XGBRegressor, XGBClassifier
 import plotly.express as px
+import plotly.graph_objects as go
 import serial
 import time
 
@@ -72,6 +76,57 @@ if uploaded_file:
         fig, ax = plt.subplots()
         sns.heatmap(df.corr(), annot=True, cmap="coolwarm", ax=ax)
         st.pyplot(fig)
+
+    if st.checkbox("Pairplot of features"):
+        sampled_df = df.sample(min(200, len(df)))
+        fig = sns.pairplot(sampled_df)
+        st.pyplot(fig)
+
+    if st.checkbox("Distribution of Numeric Features"):
+        numeric_cols = df.select_dtypes(include=np.number).columns
+        for col in numeric_cols:
+            fig = px.histogram(df, x=col, nbins=30, title=f"Distribution of {col}")
+            st.plotly_chart(fig)
+
+    if st.checkbox("Box Plots for Outlier Detection"):
+        numeric_cols = df.select_dtypes(include=np.number).columns
+        for col in numeric_cols:
+            fig = px.box(df, y=col, title=f"Boxplot of {col}")
+            st.plotly_chart(fig)
+
+    if st.checkbox("Violin Plots"):
+        numeric_cols = df.select_dtypes(include=np.number).columns
+        for col in numeric_cols:
+            fig = px.violin(df, y=col, box=True, title=f"Violin Plot of {col}")
+            st.plotly_chart(fig)
+
+    if st.checkbox("PCA Visualization"):
+        numeric_data = df.select_dtypes(include=np.number).dropna()
+        scaler = StandardScaler()
+        scaled_data = scaler.fit_transform(numeric_data)
+        pca = PCA(n_components=2)
+        components = pca.fit_transform(scaled_data)
+        pca_df = pd.DataFrame(components, columns=['PC1', 'PC2'])
+        fig = px.scatter(pca_df, x='PC1', y='PC2', title="PCA 2D Projection")
+        st.plotly_chart(fig)
+
+    if st.checkbox("t-SNE Visualization"):
+        numeric_data = df.select_dtypes(include=np.number).dropna()
+        scaler = StandardScaler()
+        scaled_data = scaler.fit_transform(numeric_data)
+        tsne = TSNE(n_components=2, perplexity=30, n_iter=1000, random_state=42)
+        tsne_result = tsne.fit_transform(scaled_data)
+        tsne_df = pd.DataFrame(tsne_result, columns=['TSNE1', 'TSNE2'])
+        fig = px.scatter(tsne_df, x='TSNE1', y='TSNE2', title="t-SNE Projection")
+        st.plotly_chart(fig)
+
+    if st.checkbox("KMeans Clustering"):
+        numeric_data = df.select_dtypes(include=np.number).dropna()
+        kmeans = KMeans(n_clusters=3, random_state=0)
+        clusters = kmeans.fit_predict(numeric_data)
+        df['Cluster'] = clusters
+        fig = px.scatter_matrix(df, dimensions=numeric_data.columns, color='Cluster', title="KMeans Clustering")
+        st.plotly_chart(fig)
 
     st.subheader("Select Target Column")
     target_col = st.selectbox("Target (what you want to predict)", df.columns)

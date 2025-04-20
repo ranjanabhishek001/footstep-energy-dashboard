@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
 import joblib
 import os
 
@@ -10,19 +12,9 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, mean_squared_error
 
 st.set_page_config(page_title="Energy from Footsteps", layout="wide")
-
-# Custom CSS
-st.markdown("""
-    <style>
-        body { background-color: #f4f6f9; color: #333; }
-        .main { background-color: #ffffff; padding: 2rem; border-radius: 12px; box-shadow: 0px 0px 15px rgba(0,0,0,0.05); }
-        h1, h2, h3 { color: #2E86AB; }
-        .stButton button { border-radius: 8px; background-color: #2E86AB; color: white; }
-    </style>
-""", unsafe_allow_html=True)
 
 # Load data
 data = pd.read_csv("energy_harvesting_data.csv")
@@ -62,7 +54,7 @@ def train_and_save_models():
     joblib.dump(rf, "rf_model.pkl")
     joblib.dump(xgb, "xgb_model.pkl")
 
-if not all(os.path.exists(f"models/{m}_model.pkl") for m in ["linear", "rf", "xgb"]):
+if not all(os.path.exists(f"{m}_model.pkl") for m in ["linear", "rf", "xgb"]):
     train_and_save_models()
 
 # Load models
@@ -82,31 +74,62 @@ if st.button("Predict Energy Output"):
     prediction = model.predict(input_data)[0]
     st.success(f"🔋 Predicted Energy Output: **{prediction:.2f} mA**")
 
-# Visualizations
+# ---------------------- VISUALIZATIONS ----------------------
 st.subheader("📊 Data Visualizations")
 
-col1, col2 = st.columns(2)
+tab1, tab2, tab3 = st.tabs(["📌 Overview", "📈 Relationships", "📊 Feature Analysis"])
 
-with col1:
-    st.markdown("### Correlation Heatmap")
-    fig, ax = plt.subplots()
-    sns.heatmap(data.corr(), annot=True, cmap="coolwarm", ax=ax)
-    st.pyplot(fig)
+with tab1:
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("### 🔥 Correlation Heatmap")
+        fig, ax = plt.subplots()
+        sns.heatmap(data.corr(), annot=True, cmap="coolwarm", ax=ax)
+        st.pyplot(fig)
 
-with col2:
-    st.markdown("### Scatter Plot: Displacement Force vs Energy Output")
-    fig2, ax2 = plt.subplots()
-    sns.scatterplot(x=data["Displacement_Force (N)"], y=data["Energy_Output (mA)"], hue=data["User_Weight (kg)"], palette="viridis", ax=ax2)
-    st.pyplot(fig2)
+    with col2:
+        st.markdown("### 🎯 Histogram of Energy Output")
+        fig2 = px.histogram(data, x="Energy_Output (mA)", nbins=30, color_discrete_sequence=["#2E86AB"])
+        st.plotly_chart(fig2, use_container_width=True)
 
-# Feature importance
-if model_choice in ["Random Forest", "XGBoost"]:
-    st.markdown("### 🔍 Feature Importances")
-    importance_df = pd.DataFrame({
-        "Feature": X.columns,
-        "Importance": model.feature_importances_
-    }).sort_values(by="Importance", ascending=False)
-    
-    fig3, ax3 = plt.subplots()
-    sns.barplot(x="Importance", y="Feature", data=importance_df, ax=ax3)
-    st.pyplot(fig3)
+    st.markdown("### 🧊 Boxplot: User Weight vs Energy Output")
+    fig3 = px.box(data, x="User_Weight (kg)", y="Energy_Output (mA)", points="all", color_discrete_sequence=["#FF5733"])
+    st.plotly_chart(fig3, use_container_width=True)
+
+with tab2:
+    st.markdown("### 🌐 3D Scatter Plot")
+    fig4 = px.scatter_3d(
+        data, x='Step_Frequency (steps/sec)', y='Displacement_Force (N)', z='Energy_Output (mA)',
+        color='User_Weight (kg)', size='Foot_Pressure (N)', opacity=0.7
+    )
+    st.plotly_chart(fig4, use_container_width=True)
+
+    st.markdown("### 🔍 Pairwise Relationships")
+    fig5 = sns.pairplot(data)
+    st.pyplot(fig5)
+
+with tab3:
+    # Feature importance
+    if model_choice in ["Random Forest", "XGBoost"]:
+        st.markdown("### 💡 Feature Importances (Interactive)")
+        importance_df = pd.DataFrame({
+            "Feature": X.columns,
+            "Importance": model.feature_importances_
+        }).sort_values(by="Importance", ascending=False)
+
+        fig6 = px.bar(importance_df, x="Importance", y="Feature", orientation='h', color="Importance", color_continuous_scale='Blues')
+        st.plotly_chart(fig6, use_container_width=True)
+
+    # Predicted vs Actual
+    st.markdown("### 🎯 Predicted vs Actual Plot")
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    y_pred = model.predict(X_test)
+
+    fig7 = px.scatter(x=y_test, y=y_pred, labels={'x': 'Actual', 'y': 'Predicted'}, title="Actual vs Predicted Energy Output")
+    fig7.add_trace(go.Scatter(x=[y_test.min(), y_test.max()], y=[y_test.min(), y_test.max()], mode='lines', name='Ideal', line=dict(dash='dash')))
+    st.plotly_chart(fig7, use_container_width=True)
+
+    r2 = r2_score(y_test, y_pred)
+    mse = mean_squared_error(y_test, y_pred)
+    st.metric(label="R² Score", value=f"{r2:.3f}")
+    st.metric(label="MSE", value=f"{mse:.2f}")

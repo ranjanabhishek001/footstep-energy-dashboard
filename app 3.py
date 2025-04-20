@@ -1,119 +1,377 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import seaborn as sns
+import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
+import seaborn as sns
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
-from xgboost import XGBRegressor
-from sklearn.metrics import mean_squared_error, r2_score
+import xgboost as xgb
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+import plotly.express as px
+import plotly.graph_objects as go
+from streamlit_extras.metric_cards import style_metric_cards
 
-st.set_page_config(page_title="Energy Output Prediction", layout="wide")
-st.title("⚡ Energy Prediction from Footsteps using Machine Learning")
+# --- Custom CSS ---
+st.markdown('''
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
 
-st.sidebar.header("📂 Upload your dataset")
-uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type=["csv"])
+        :root {
+            --primary: #2E86AB;
+            --secondary: #F18F01;
+            --accent: #C73E1D;
+            --light: #F0F2F6;
+            --dark: #2B2D42;
+        }
 
+        * {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .main {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 100%);
+        }
+
+        h1, h2, h3 {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .stButton>button {
+            background: linear-gradient(135deg, var(--primary) 0%, #1a6f8b 100%);
+            color: white;
+            padding: 0.5em 2em;
+            border-radius: 30px;
+            border: none;
+            font-weight: 500;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .stButton>button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+        }
+
+        .stSelectbox, .stNumberInput {
+            border-radius: 10px !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 10px;
+        }
+
+        .stTabs [data-baseweb="tab"] {
+            padding: 8px 20px;
+            border-radius: 20px !important;
+            background-color: white;
+            transition: all 0.3s ease;
+        }
+
+        .stTabs [aria-selected="true"] {
+            background-color: var(--primary) !important;
+            color: white !important;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+        }
+
+        .prediction-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+            border-left: 5px solid var(--primary);
+        }
+    </style>
+''', unsafe_allow_html=True)
+
+# --- Title ---
+st.title('👣 Footstep Energy Harvesting Dashboard')
+st.markdown('''
+    <div style='background: linear-gradient(135deg, #2E86AB 0%, #1a6f8b 100%);
+            padding: 15px; border-radius: 15px; color: white; margin-bottom: 30px;'>
+        <h3 style='color: white; margin: 0;'>Predicting Energy Output from Footsteps using Machine Learning</h3>
+    </div>
+''', unsafe_allow_html=True)
+
+# --- Load Data ---
 @st.cache_data
-def load_data(file):
-    df = pd.read_csv(file)
-    return df
+def load_data():
+    return pd.read_csv('energy_harvesting_data.csv')
 
-if uploaded_file is not None:
-    df = load_data(uploaded_file)
-    st.subheader("📄 Uploaded Dataset Preview")
-    st.write(df.head())
+df = load_data()
 
-    # Data Splitting
-    X = df.drop("Energy_Output (mA)", axis=1)
-    y = df["Energy_Output (mA)"]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    # Model Training
+# --- Initialize Models ---
+@st.cache_resource
+def get_models():
     models = {
-        "Linear Regression": LinearRegression(),
-        "Random Forest": RandomForestRegressor(random_state=42),
-        "XGBoost": XGBRegressor(objective="reg:squarederror", random_state=42)
+        'Linear Regression': LinearRegression(),
+        'Random Forest': RandomForestRegressor(n_estimators=100, random_state=42),
+        'XGBoost': xgb.XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42)
     }
+    return models
 
-    st.sidebar.header("⚙️ Model Selection")
-    model_option = st.sidebar.selectbox("Select a model", list(models.keys()))
-    model = models[model_option]
-    model.fit(X_train, y_train)
+models = get_models()
 
-    y_pred = model.predict(X_test)
+# --- Feature Selection ---
+X = df.drop(columns=['Energy_Output (mA)'])
+y = df['Energy_Output (mA)']
 
-    # Tabs for Results and Visualizations
-    tab1, tab2, tab3, tab4 = st.tabs(["📈 Results", "📊 Visualizations", "📌 All Model Comparison", "🧪 Live Prediction"])
+# --- Split Data ---
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    with tab1:
-        st.subheader("📊 Model Performance")
-        mse = mean_squared_error(y_test, y_pred)
-        r2 = r2_score(y_test, y_pred)
-        st.write(f"**Mean Squared Error:** {mse:.2f}")
-        st.write(f"**R² Score:** {r2:.2f}")
+# --- Scale Features ---
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
 
-        st.subheader("📋 Prediction Table")
-        pred_df = pd.DataFrame({"Actual": y_test, "Predicted": y_pred}).reset_index(drop=True)
-        st.dataframe(pred_df)
+# --- Sidebar Info ---
+st.sidebar.title('🔧 Settings')
+model_option = st.sidebar.selectbox('Select Model', list(models.keys()))
+show_all_models = st.sidebar.checkbox('Compare all models', value=True)
 
-        csv_pred = pred_df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Download Prediction Table", data=csv_pred, file_name="prediction_results.csv", mime="text/csv")
+# --- Train Selected Model ---
+model = models[model_option]
+model.fit(X_train_scaled, y_train)
+y_pred = model.predict(X_test_scaled)
 
-    with tab2:
-        st.subheader("📉 Correlation Heatmap")
-        fig1, ax1 = plt.subplots()
-        sns.heatmap(df.corr(numeric_only=True), annot=True, cmap="coolwarm", ax=ax1)
-        st.pyplot(fig1)
+# --- Evaluation Metrics ---
+mse = mean_squared_error(y_test, y_pred)
+rmse = np.sqrt(mse)
+r2 = r2_score(y_test, y_pred)
+mae = mean_absolute_error(y_test, y_pred)
 
-        st.subheader("📌 Actual vs Predicted Plot")
-        actual_vs_pred_df = pd.DataFrame({"Actual": y_test, "Predicted": y_pred}).reset_index(drop=True)
-        fig_actual_pred = px.scatter(
-            actual_vs_pred_df, x="Actual", y="Predicted",
-            title=f"🎯 Actual vs Predicted Energy Output - {model_option}",
-            labels={"Actual": "Actual Energy Output (mA)", "Predicted": "Predicted Energy Output (mA)"},
-            trendline="ols", color_discrete_sequence=["#00cc96"]
+# --- Tabs ---
+tab1, tab2, tab3 = st.tabs(['📊 Predictions', '📈 Visualizations', '🔍 Model Comparison'])
+
+with tab1:
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown('''<div class='metric-card'>
+                    <h3>R² Score</h3>
+                    <h2 style='color: var(--primary);'>{:.3f}</h2>
+                    </div>'''.format(r2), unsafe_allow_html=True)
+    with col2:
+        st.markdown('''<div class='metric-card'>
+                    <h3>RMSE</h3>
+                    <h2 style='color: var(--accent);'>{:.2f} mA</h2>
+                    </div>'''.format(rmse), unsafe_allow_html=True)
+    with col3:
+        st.markdown('''<div class='metric-card'>
+                    <h3>MAE</h3>
+                    <h2 style='color: var(--secondary);'>{:.2f} mA</h2>
+                    </div>'''.format(mae), unsafe_allow_html=True)
+
+    style_metric_cards()
+
+    st.markdown('---')
+
+    # Predict from user input
+    st.markdown('### 🔍 Make a Prediction')
+    input_cols = st.columns(2)
+    input_data = {}
+
+    for i, col in enumerate(X.columns):
+        with input_cols[i % 2]:
+            input_data[col] = st.number_input(
+                f'Enter {col}',
+                value=float(df[col].mean()),
+                min_value=float(df[col].min()),
+                max_value=float(df[col].max()),
+                step=0.1
+            )
+
+    if st.button('Predict Energy Output'):
+        input_df = pd.DataFrame([input_data])
+        input_scaled = scaler.transform(input_df)
+
+        if show_all_models:
+            # Compare predictions from all models
+            predictions = {}
+            for name, m in models.items():
+                m.fit(X_train_scaled, y_train)  # Retrain to ensure fairness
+                predictions[name] = m.predict(input_scaled)[0]
+
+            # Create comparison chart
+            fig = go.Figure()
+            sorted_preds = sorted(predictions.items(), key=lambda x: x[1], reverse=True)
+            names = [x[0] for x in sorted_preds]
+            values = [x[1] for x in sorted_preds]
+
+            fig.add_trace(go.Bar(
+                x=values,
+                y=names,
+                orientation='h',
+                marker_color=['#2E86AB', '#F18F01', '#C73E1D'],
+                text=[f'{v:.2f} mA' for v in values],
+                textposition='auto'
+            ))
+
+            fig.update_layout(
+                title='Model Comparison for Current Input',
+                xaxis_title='Predicted Energy Output (mA)',
+                yaxis_title='Model',
+                height=300,
+                margin=dict(l=20, r=20, t=40, b=20)
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Show best model
+            best_model = max(predictions.items(), key=lambda x: x[1])
+            st.markdown('''<div class='prediction-card'>
+                    <h3>Best Model for This Input</h3>
+                    <p style='font-size: 24px; margin: 10px 0;'><b>{}</b></p>
+                    <p style='font-size: 18px;'>Predicted Output: <b style='color: var(--accent);'>{:.2f} mA</b></p>
+                </div>'''.format(best_model[0], best_model[1]), unsafe_allow_html=True)
+        else:
+            # Single model prediction
+            prediction = model.predict(input_scaled)[0]
+            st.markdown('''<div class='prediction-card'>
+                    <h3>Prediction Result</h3>
+                    <p style='font-size: 24px; margin: 10px 0;'><b>{}</b></p>
+                    <p style='font-size: 18px;'>Predicted Output: <b style='color: var(--accent);'>{:.2f} mA</b></p>
+                </div>'''.format(model_option, prediction), unsafe_allow_html=True)
+
+with tab2:
+    st.markdown('### 🔬 Data Exploration')
+
+    # Data summary
+    with st.expander('📋 Dataset Overview'):
+        st.dataframe(df.describe().style.background_gradient(cmap='Blues'))
+
+    # Correlation Heatmap
+    st.markdown('#### 🔥 Correlation Heatmap')
+    fig1 = px.imshow(
+        df.corr(),
+        text_auto=True,
+        color_continuous_scale='RdBu',
+        aspect='auto'
+    )
+    st.plotly_chart(fig1, use_container_width=True)
+
+    # Feature Distribution
+    st.markdown('#### 📊 Feature Distributions')
+    feature = st.selectbox('Select feature to visualize', X.columns)
+
+    fig_dist = px.histogram(
+        df,
+        x=feature,
+        marginal='box',
+        color_discrete_sequence=['#2E86AB'],
+        title=f'Distribution of {feature}'
+    )
+    st.plotly_chart(fig_dist, use_container_width=True)
+
+    # Feature vs Energy Output
+    st.markdown('#### ⚡ Feature vs Energy Output')
+    fig_scatter = px.scatter(
+        df,
+        x=feature,
+        y='Energy_Output (mA)',
+        trendline='lowess',
+        color_discrete_sequence=['#F18F01'],
+        title=f'{feature} vs Energy Output'
+    )
+    st.plotly_chart(fig_scatter, use_container_width=True)
+
+    # Feature Importance (if tree-based model)
+    if model_option in ['Random Forest', 'XGBoost']:
+        st.markdown('#### 🧠 Feature Importance')
+        importance_df = pd.DataFrame({
+            'Feature': X.columns,
+            'Importance': model.feature_importances_
+        }).sort_values(by='Importance', ascending=True)
+
+        fig_importance = px.bar(
+            importance_df,
+            x='Importance',
+            y='Feature',
+            orientation='h',
+            color='Importance',
+            color_continuous_scale='Blues',
+            title='Feature Importance'
         )
-        fig_actual_pred.update_layout(showlegend=False)
-        st.plotly_chart(fig_actual_pred, use_container_width=True)
+        st.plotly_chart(fig_importance, use_container_width=True)
 
-    with tab3:
-        st.subheader("📌 Actual vs Predicted Energy Output (All Models)")
-        all_preds = pd.DataFrame({"Actual": y_test.reset_index(drop=True)})
-        model_metrics = []
+with tab3:
+    st.markdown('### 🏆 Model Performance Comparison')
 
-        for name, mdl in models.items():
-            mdl.fit(X_train, y_train)
-            preds = mdl.predict(X_test)
-            all_preds[name] = preds
-            mse = mean_squared_error(y_test, preds)
-            r2 = r2_score(y_test, preds)
-            model_metrics.append({"Model": name, "MSE": mse, "R² Score": r2})
+    # Train all models and collect metrics
+    metrics = []
+    for name, m in models.items():
+        m.fit(X_train_scaled, y_train)
+        y_pred = m.predict(X_test_scaled)
+        metrics.append({
+            'Model': name,
+            'R²': r2_score(y_test, y_pred),
+            'RMSE': np.sqrt(mean_squared_error(y_test, y_pred)),
+            'MAE': mean_absolute_error(y_test, y_pred)
+        })
 
-        fig_all_models = px.line(all_preds, labels={"value": "Energy Output (mA)", "index": "Sample Index"})
-        fig_all_models.update_layout(title="📊 Actual vs Predicted Energy Output (All Models)",
-                                     legend_title_text='Legend')
-        st.plotly_chart(fig_all_models, use_container_width=True)
+    metrics_df = pd.DataFrame(metrics)
 
-        st.subheader("📌 Side-by-Side Model Performance")
-        metrics_df = pd.DataFrame(model_metrics)
-        st.dataframe(metrics_df.style.highlight_max(axis=0))
+    # Display metrics table
+    st.dataframe(
+        metrics_df.style
+        .background_gradient(subset=['R²'], cmap='Greens')
+        .background_gradient(subset=['RMSE', 'MAE'], cmap='Reds_r')
+        .format({'R²': '{:.3f}', 'RMSE': '{:.2f}', 'MAE': '{:.2f}'}),
+        use_container_width=True
+    )
 
-        csv_metrics = metrics_df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Download Model Metrics", data=csv_metrics, file_name="model_comparison.csv", mime="text/csv")
+    # Interactive comparison chart
+    metric_to_compare = st.selectbox('Select metric to compare', ['R²', 'RMSE', 'MAE'])
 
-    with tab4:
-        st.subheader("🧮 Predict Energy Output from Manual Input")
+    fig_compare = px.bar(
+        metrics_df,
+        x='Model',
+        y=metric_to_compare,
+        color='Model',
+        color_discrete_sequence=['#2E86AB', '#F18F01', '#C73E1D'],
+        text_auto='.2f',
+        title=f'Model Comparison by {metric_to_compare}'
+    )
+    st.plotly_chart(fig_compare, use_container_width=True)
 
-        feature_inputs = {}
-        for col in X.columns:
-            val = st.number_input(f"Enter {col}", value=float(df[col].mean()), format="%.2f")
-            feature_inputs[col] = val
+    # Actual vs Predicted comparison
+    st.markdown('#### 📈 Actual vs Predicted Comparison')
 
-        if st.button("🚀 Predict Energy Output"):
-            input_df = pd.DataFrame([feature_inputs])
-            predicted_energy = model.predict(input_df)[0]
-            st.success(f"⚡ Predicted Energy Output: **{predicted_energy:.2f} mA**")
-else:
-    st.info("👈 Upload a CSV file from the sidebar to begin.")
+    actual_vs_pred = []
+    for name, m in models.items():
+        m.fit(X_train_scaled, y_train)
+        y_pred = m.predict(X_test_scaled)
+        actual_vs_pred.append(pd.DataFrame({
+            'Model': name,
+            'Actual': y_test,
+            'Predicted': y_pred
+        }))
+
+    actual_vs_pred_df = pd.concat(actual_vs_pred)
+
+    fig_avp = px.scatter(
+        actual_vs_pred_df,
+        x='Actual',
+        y='Predicted',
+        color='Model',
+        facet_col='Model',
+        facet_col_wrap=3,
+        color_discrete_sequence=['#2E86AB', '#F18F01', '#C73E1D'],
+        trendline='lowess',
+        title='Actual vs Predicted Values Across Models'
+    )
+    st.plotly_chart(fig_avp, use_container_width=True)

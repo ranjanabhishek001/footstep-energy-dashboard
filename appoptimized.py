@@ -25,7 +25,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Load data
-data = pd.read_csv("data/energy_data.csv")
+data = pd.read_csv("energy_harvesting_data.csv")
 
 X = data.drop("Energy_Output (mA)", axis=1)
 y = data["Energy_Output (mA)"]

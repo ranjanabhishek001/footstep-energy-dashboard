@@ -17,7 +17,7 @@ from sklearn.metrics import r2_score, mean_squared_error
 st.set_page_config(page_title="Energy from Footsteps", layout="wide")
 
 # Load data
-data = pd.read_csv("energy_harvesting_data.csv")
+data = pd.read_csv("energy_harvesting_data_synthetic.csv")
 
 X = data.drop("Energy_Output (mA)", axis=1)
 y = data["Energy_Output (mA)"]

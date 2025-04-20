@@ -1,114 +1,119 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.express as px
 import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
-import xgboost as xgb
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from xgboost import XGBRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 
-# --- Custom CSS Styling ---
-st.markdown('''
-    <style>
-        .main {
-            background-color: #f0f2f6;
-        }
-        h1, h2 {
-            color: #2E86AB;
-        }
-        .stButton>button {
-            background-color: #2E86AB;
-            color: white;
-            padding: 0.5em 1em;
-            border-radius: 10px;
-            border: none;
-        }
-    </style>
-''', unsafe_allow_html=True)
+st.set_page_config(page_title="Energy Output Prediction", layout="wide")
+st.title("⚡ Energy Prediction from Footsteps using Machine Learning")
 
-# --- App Title ---
-st.title("👣 Footstep Energy Harvesting Dashboard")
-st.subheader("Upload Your Dataset and Predict Energy Output with ML")
+st.sidebar.header("📂 Upload your dataset")
+uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type=["csv"])
 
-# --- Upload CSV ---
-uploaded_file = st.file_uploader("📁 Upload your CSV file", type=["csv"])
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    st.success("✅ File uploaded successfully!")
+@st.cache_data
+def load_data(file):
+    df = pd.read_csv(file)
+    return df
 
-    # --- Target Selection ---
-    st.sidebar.header("🔧 Settings")
-    target = st.sidebar.selectbox("Select Target Variable", df.columns)
+if uploaded_file is not None:
+    df = load_data(uploaded_file)
+    st.subheader("📄 Uploaded Dataset Preview")
+    st.write(df.head())
 
-    # --- Model Selection ---
-    model_option = st.sidebar.selectbox("Select Model", ["Linear Regression", "Random Forest", "XGBoost"])
-
-    # --- Feature & Target Split ---
-    X = df.drop(columns=[target])
-    y = df[target]
-
-    # --- Split & Scale ---
+    # Data Splitting
+    X = df.drop("Energy_Output (mA)", axis=1)
+    y = df["Energy_Output (mA)"]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
 
-    # --- Model Training ---
-    if model_option == "Linear Regression":
-        model = LinearRegression()
-    elif model_option == "Random Forest":
-        model = RandomForestRegressor(n_estimators=100, random_state=42)
-    else:
-        model = xgb.XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42)
+    # Model Training
+    models = {
+        "Linear Regression": LinearRegression(),
+        "Random Forest": RandomForestRegressor(random_state=42),
+        "XGBoost": XGBRegressor(objective="reg:squarederror", random_state=42)
+    }
 
-    model.fit(X_train_scaled, y_train)
-    y_pred = model.predict(X_test_scaled)
+    st.sidebar.header("⚙️ Model Selection")
+    model_option = st.sidebar.selectbox("Select a model", list(models.keys()))
+    model = models[model_option]
+    model.fit(X_train, y_train)
 
-    # --- Metrics ---
-    r2 = r2_score(y_test, y_pred)
-    mse = mean_squared_error(y_test, y_pred)
+    y_pred = model.predict(X_test)
 
-    # --- Tabs ---
-    tab1, tab2 = st.tabs(["📊 Predictions", "📈 Visualizations"])
+    # Tabs for Results and Visualizations
+    tab1, tab2, tab3, tab4 = st.tabs(["📈 Results", "📊 Visualizations", "📌 All Model Comparison", "🧪 Live Prediction"])
 
     with tab1:
-        st.markdown("### 📋 Model Evaluation")
-        st.write(f"**Model Used**: {model_option}")
-        st.write(f"**R² Score**: {r2:.4f}")
-        st.write(f"**MSE**: {mse:.4f}")
+        st.subheader("📊 Model Performance")
+        mse = mean_squared_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+        st.write(f"**Mean Squared Error:** {mse:.2f}")
+        st.write(f"**R² Score:** {r2:.2f}")
 
-        # --- Predict from User Input ---
-        st.markdown("### 🔍 Try Your Own Inputs")
-        input_data = {}
-        for col in X.columns:
-            val = st.number_input(f"{col}", value=float(df[col].mean()))
-            input_data[col] = val
+        st.subheader("📋 Prediction Table")
+        pred_df = pd.DataFrame({"Actual": y_test, "Predicted": y_pred}).reset_index(drop=True)
+        st.dataframe(pred_df)
 
-        input_df = pd.DataFrame([input_data])
-        input_scaled = scaler.transform(input_df)
-        prediction = model.predict(input_scaled)[0]
-        st.success(f"🔋 Predicted {target}: **{prediction:.2f}**")
+        csv_pred = pred_df.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Download Prediction Table", data=csv_pred, file_name="prediction_results.csv", mime="text/csv")
 
     with tab2:
-        st.markdown("### 🔬 Data Preview")
-        st.dataframe(df.head())
-
-        st.markdown("#### 🔥 Correlation Heatmap")
+        st.subheader("📉 Correlation Heatmap")
         fig1, ax1 = plt.subplots()
-        sns.heatmap(df.corr(), annot=True, cmap="coolwarm", ax=ax1)
+        sns.heatmap(df.corr(numeric_only=True), annot=True, cmap="coolwarm", ax=ax1)
         st.pyplot(fig1)
 
-        # --- Feature Importance for Tree Models ---
-        if model_option in ["Random Forest", "XGBoost"]:
-            st.markdown("#### 🧠 Feature Importance")
-            importance_df = pd.DataFrame({
-                "Feature": X.columns,
-                "Importance": model.feature_importances_
-            }).sort_values(by="Importance", ascending=False)
-            fig2, ax2 = plt.subplots()
-            sns.barplot(x="Importance", y="Feature", data=importance_df, ax=ax2)
-            st.pyplot(fig2)
+        st.subheader("📌 Actual vs Predicted Plot")
+        actual_vs_pred_df = pd.DataFrame({"Actual": y_test, "Predicted": y_pred}).reset_index(drop=True)
+        fig_actual_pred = px.scatter(
+            actual_vs_pred_df, x="Actual", y="Predicted",
+            title=f"🎯 Actual vs Predicted Energy Output - {model_option}",
+            labels={"Actual": "Actual Energy Output (mA)", "Predicted": "Predicted Energy Output (mA)"},
+            trendline="ols", color_discrete_sequence=["#00cc96"]
+        )
+        fig_actual_pred.update_layout(showlegend=False)
+        st.plotly_chart(fig_actual_pred, use_container_width=True)
+
+    with tab3:
+        st.subheader("📌 Actual vs Predicted Energy Output (All Models)")
+        all_preds = pd.DataFrame({"Actual": y_test.reset_index(drop=True)})
+        model_metrics = []
+
+        for name, mdl in models.items():
+            mdl.fit(X_train, y_train)
+            preds = mdl.predict(X_test)
+            all_preds[name] = preds
+            mse = mean_squared_error(y_test, preds)
+            r2 = r2_score(y_test, preds)
+            model_metrics.append({"Model": name, "MSE": mse, "R² Score": r2})
+
+        fig_all_models = px.line(all_preds, labels={"value": "Energy Output (mA)", "index": "Sample Index"})
+        fig_all_models.update_layout(title="📊 Actual vs Predicted Energy Output (All Models)",
+                                     legend_title_text='Legend')
+        st.plotly_chart(fig_all_models, use_container_width=True)
+
+        st.subheader("📌 Side-by-Side Model Performance")
+        metrics_df = pd.DataFrame(model_metrics)
+        st.dataframe(metrics_df.style.highlight_max(axis=0))
+
+        csv_metrics = metrics_df.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Download Model Metrics", data=csv_metrics, file_name="model_comparison.csv", mime="text/csv")
+
+    with tab4:
+        st.subheader("🧮 Predict Energy Output from Manual Input")
+
+        feature_inputs = {}
+        for col in X.columns:
+            val = st.number_input(f"Enter {col}", value=float(df[col].mean()), format="%.2f")
+            feature_inputs[col] = val
+
+        if st.button("🚀 Predict Energy Output"):
+            input_df = pd.DataFrame([feature_inputs])
+            predicted_energy = model.predict(input_df)[0]
+            st.success(f"⚡ Predicted Energy Output: **{predicted_energy:.2f} mA**")
 else:
-    st.info("👆 Please upload a CSV file to get started.")
+    st.info("👈 Upload a CSV file from the sidebar to begin.")

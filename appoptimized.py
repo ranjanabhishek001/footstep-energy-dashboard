@@ -1,130 +1,99 @@
-
 import streamlit as st
 import pandas as pd
-import numpy as np
-import plotly.express as px
-
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+import numpy as np
 
-from sklearn.metrics import r2_score, mean_squared_error
+st.set_page_config(page_title="Footstep Energy Prediction Dashboard", layout="wide")
 
-# Set Streamlit page config
-st.set_page_config(page_title="Energy Output Predictor", layout="wide")
+st.title("⚡ Footstep Energy Prediction using Machine Learning")
 
-st.title("⚡ Energy Prediction from Footsteps using ML")
+# File uploader
+uploaded_file = st.file_uploader("📤 Upload your dataset (CSV only)", type=["csv"])
 
-# Tabs
-tab1, tab2, tab3 = st.tabs(["📊 ML Dashboard", "📁 Upload Dataset", "🧪 Model Diagnostics"])
-
-# Load or Upload Dataset
-@st.cache_data
-def load_data():
-    return pd.read_csv("energy_harvesting_data.csv")
-
-df = load_data()
-
-with tab2:
-    st.header("📁 Upload Your Custom Dataset")
-    uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
-    if uploaded_file is not None:
-        df = pd.read_csv(uploaded_file)
-        st.success("Custom dataset uploaded successfully!")
-
-    st.write("### Preview of Dataset")
+if uploaded_file:
+    # Load data
+    df = pd.read_csv(uploaded_file)
+    st.write("### 📊 Preview of Uploaded Dataset")
     st.dataframe(df.head())
 
-# Feature selection
-X = df.drop("Energy_Output (mA)", axis=1)
-y = df["Energy_Output (mA)"]
+    # --- Dynamic Output Column Detection ---
+    try:
+        output_col = [col for col in df.columns if "Energy" in col][0]
+        st.success(f"✅ Detected target column: `{output_col}`")
+    except IndexError:
+        st.error("❌ Could not find a column containing the word 'Energy'. Please check your dataset.")
+        st.stop()
 
-# Preprocessing
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
+    # Feature and target split
+    X = df.drop(output_col, axis=1)
+    y = df[output_col]
 
-# Model selection
-model_name = st.sidebar.selectbox("Choose Model", ["Linear Regression", "Random Forest", "XGBoost"])
+    # Split data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-if model_name == "Linear Regression":
-    model = LinearRegression()
-elif model_name == "Random Forest":
-    model = RandomForestRegressor(n_estimators=100, random_state=42)
-elif model_name == "XGBoost":
-    model = XGBRegressor(n_estimators=100, learning_rate=0.1, max_depth=5, random_state=42)
+    # --- Model Training ---
+    models = {
+        "Linear Regression": LinearRegression(),
+        "Random Forest": RandomForestRegressor(n_estimators=100, random_state=42),
+        "XGBoost": XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42)
+    }
 
-model.fit(X_train_scaled, y_train)
-y_pred = model.predict(X_test_scaled)
+    results = {}
 
-# === TAB 1: ML Dashboard ===
-with tab1:
-    st.header("📊 ML Dashboard")
-    r2 = r2_score(y_test, y_pred)
-    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
 
-    st.subheader("📈 Model Performance on Test Data")
-    st.metric("R² Score", f"{r2:.3f}")
-    st.metric("RMSE", f"{rmse:.2f} mA")
+        r2 = r2_score(y_test, y_pred)
+        mae = mean_absolute_error(y_test, y_pred)
+        rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 
-    # Actual vs Predicted Plot
-    fig1 = px.scatter(x=y_test, y=y_pred,
-                      labels={"x": "Actual Energy Output (mA)", "y": "Predicted Energy Output (mA)"},
-                      title="Actual vs Predicted Energy Output")
-    fig1.add_shape(type='line',
-                   x0=y_test.min(), y0=y_test.min(),
-                   x1=y_test.max(), y1=y_test.max(),
-                   line=dict(color="red", dash="dash"))
-    st.plotly_chart(fig1, use_container_width=True)
+        results[name] = {
+            "Model": model,
+            "R2 Score": r2,
+            "MAE": mae,
+            "RMSE": rmse,
+            "y_pred": y_pred
+        }
 
-# === TAB 3: Model Diagnostics ===
-with tab3:
-    st.header("🧪 Model Diagnostics")
+    # --- Performance Metrics Table ---
+    st.write("### 📈 Model Performance Comparison")
 
-    # Training Evaluation
-    train_pred = model.predict(X_train_scaled)
-    train_r2 = r2_score(y_train, train_pred)
-    train_rmse = np.sqrt(mean_squared_error(y_train, train_pred))
+    perf_df = pd.DataFrame({
+        model: {
+            "R² Score": res["R2 Score"],
+            "MAE": res["MAE"],
+            "RMSE": res["RMSE"]
+        }
+        for model, res in results.items()
+    }).T
 
-    st.subheader("🔍 Training Performance")
-    st.write(f"**Training R² Score:** {train_r2:.3f}")
-    st.write(f"**Training RMSE:** {train_rmse:.2f} mA")
+    st.dataframe(perf_df.style.background_gradient(cmap='Blues', axis=0))
 
-    # Cross Validation
-    st.subheader("🔁 Cross-Validation (5-Fold)")
-    cv_scores = cross_val_score(model, X_train_scaled, y_train, cv=5, scoring='r2')
-    st.write(f"**Cross-validated R² Scores:** {cv_scores}")
-    st.write(f"**Mean CV R²:** {np.mean(cv_scores):.3f}")
+    # --- Visualization ---
+    st.write("### 📉 Actual vs Predicted Plot")
 
-    # Feature Importance
-    if hasattr(model, 'feature_importances_'):
-        st.subheader("📌 Feature Importances")
-        importances = model.feature_importances_
-        importance_df = pd.DataFrame({
-            'Feature': X.columns,
-            'Importance': importances
-        }).sort_values(by='Importance', ascending=False)
-        st.dataframe(importance_df)
+    selected_model = st.selectbox("Select a model to visualize", list(results.keys()))
+    fig, ax = plt.subplots()
+    ax.plot(y_test.values, label='Actual', marker='o')
+    ax.plot(results[selected_model]['y_pred'], label='Predicted', marker='x')
+    ax.set_title(f'Actual vs Predicted - {selected_model}')
+    ax.set_xlabel('Sample Index')
+    ax.set_ylabel(output_col)
+    ax.legend()
+    st.pyplot(fig)
 
-        fig_importance = px.bar(importance_df, x='Importance', y='Feature', orientation='h', title='Feature Importance')
-        st.plotly_chart(fig_importance, use_container_width=True)
-
-    # Actual vs Predicted
-    st.subheader("🎯 Actual vs Predicted (Test Set)")
-    fig2 = px.scatter(x=y_test, y=y_pred,
-                      labels={'x': 'Actual Energy Output (mA)', 'y': 'Predicted Energy Output (mA)'},
-                      title='Actual vs Predicted Energy Output')
-    fig2.add_shape(type='line',
-                   x0=y_test.min(), y0=y_test.min(),
-                   x1=y_test.max(), y1=y_test.max(),
-                   line=dict(color='green', dash='dot'))
-    st.plotly_chart(fig2, use_container_width=True)
-
-    # Feature Distributions
-    st.subheader("📈 Feature Distributions")
+    # --- Optional Prediction Input ---
+    st.write("### 🔍 Make a New Prediction")
+    input_data = {}
     for col in X.columns:
-        fig = px.histogram(df, x=col, nbins=30, title=f"{col} Distribution")
-        st.plotly_chart(fig, use_container_width=True)
+        input_data[col] = st.number_input(f"Enter value for {col}", value=float(df[col].mean()))
+
+    input_df = pd.DataFrame([input_data])
+    pred_value = results[selected_model]["Model"].predict(input_df)[0]
+    st.success(f"Predicted {output_col}: **{pred_value:.2f}**")

@@ -1,3 +1,4 @@
+streamlit_extras
 streamlit
 pandas
 scikit-learn

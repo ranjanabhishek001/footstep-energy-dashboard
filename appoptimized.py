@@ -11,7 +11,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import plotly.express as px
 import plotly.graph_objects as go
-from streamlit_extras.metric_cards import style_metric_cards
 
 # --- Custom CSS ---
 st.markdown('''

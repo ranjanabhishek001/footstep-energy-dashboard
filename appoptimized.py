@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -37,7 +38,7 @@ with tab2:
     st.dataframe(df.head())
 
 # Feature selection
-X = df.drop("Energy_Output", axis=1)
+X = df.drop("Energy_Output (mA)", axis=1)
 y = df["Energy_Output (mA)"]
 
 # Preprocessing

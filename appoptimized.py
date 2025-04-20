@@ -175,7 +175,7 @@ with tab1:
                     <h2 style='color: var(--secondary);'>{:.2f} mA</h2>
                     </div>'''.format(mae), unsafe_allow_html=True)
     
-    style_metric_cards()
+
     
     st.markdown('---')
     

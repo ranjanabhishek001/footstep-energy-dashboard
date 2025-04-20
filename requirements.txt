@@ -9,3 +9,4 @@ seaborn
 xgboost
 plotly
 pyserial
+statsmodels

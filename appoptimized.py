@@ -5,8 +5,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
-import joblib
-import os
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
@@ -38,37 +36,23 @@ input_data = pd.DataFrame({
     'Displacement_Force (N)': [displacement_force]
 })
 
-# Train models (or load pre-trained models)
-def train_and_save_models():
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    
-    linear = LinearRegression()
-    rf = RandomForestRegressor(n_estimators=100, random_state=42)
-    xgb = XGBRegressor(n_estimators=100, random_state=42, verbosity=0)
+# Train models
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    linear.fit(X_train, y_train)
-    rf.fit(X_train, y_train)
-    xgb.fit(X_train, y_train)
-
-    joblib.dump(linear, "linear_model.pkl")
-    joblib.dump(rf, "rf_model.pkl")
-    joblib.dump(xgb, "xgb_model.pkl")
-
-if not all(os.path.exists(f"{m}_model.pkl") for m in ["linear", "rf", "xgb"]):
-    train_and_save_models()
-
-# Load models
-model_dict = {
-    "Linear Regression": joblib.load("linear_model.pkl"),
-    "Random Forest": joblib.load("rf_model.pkl"),
-    "XGBoost": joblib.load("xgb_model.pkl"),
+models = {
+    "Linear Regression": LinearRegression(),
+    "Random Forest": RandomForestRegressor(n_estimators=100, random_state=42),
+    "XGBoost": XGBRegressor(n_estimators=100, random_state=42, verbosity=0),
 }
 
+for name, model in models.items():
+    model.fit(X_train, y_train)
+    
 # Main interface
 st.title("⚡ Energy Prediction from Footsteps")
 
-model_choice = st.selectbox("Choose a Machine Learning Model", list(model_dict.keys()))
-model = model_dict[model_choice]
+model_choice = st.selectbox("Choose a Machine Learning Model", list(models.keys()))
+model = models[model_choice]
 
 if st.button("Predict Energy Output"):
     prediction = model.predict(input_data)[0]
@@ -122,7 +106,6 @@ with tab3:
 
     # Predicted vs Actual
     st.markdown("### 🎯 Predicted vs Actual Plot")
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     y_pred = model.predict(X_test)
 
     fig7 = px.scatter(x=y_test, y=y_pred, labels={'x': 'Actual', 'y': 'Predicted'}, title="Actual vs Predicted Energy Output")

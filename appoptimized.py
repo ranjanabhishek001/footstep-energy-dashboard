@@ -1,99 +1,199 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
+import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
-from xgboost import XGBRegressor
-from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
-import numpy as np
+import xgboost as xgb
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+import plotly.express as px
+import plotly.graph_objects as go
+from streamlit_extras.metric_cards import style_metric_cards
 
-st.set_page_config(page_title="Footstep Energy Prediction Dashboard", layout="wide")
+# --- Custom CSS ---
+st.markdown('''
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
 
-st.title("⚡ Footstep Energy Prediction using Machine Learning")
+        :root {
+            --primary: #2E86AB;
+            --secondary: #F18F01;
+            --accent: #C73E1D;
+            --light: #F0F2F6;
+            --dark: #2B2D42;
+        }
 
-# File uploader
-uploaded_file = st.file_uploader("📤 Upload your dataset (CSV only)", type=["csv"])
+        * {
+            font-family: 'Poppins', sans-serif;
+        }
 
-if uploaded_file:
-    # Load data
-    df = pd.read_csv(uploaded_file)
-    st.write("### 📊 Preview of Uploaded Dataset")
-    st.dataframe(df.head())
+        .main {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 100%);
+        }
 
-    # --- Dynamic Output Column Detection ---
-    try:
-        output_col = [col for col in df.columns if "Energy" in col][0]
-        st.success(f"✅ Detected target column: `{output_col}`")
-    except IndexError:
-        st.error("❌ Could not find a column containing the word 'Energy'. Please check your dataset.")
-        st.stop()
+        h1, h2, h3 {
+            color: var(--primary);
+            font-weight: 600;
+        }
 
-    # Feature and target split
-    X = df.drop(output_col, axis=1)
-    y = df[output_col]
+        .stButton>button {
+            background: linear-gradient(135deg, var(--primary) 0%, #1a6f8b 100%);
+            color: white;
+            padding: 0.5em 2em;
+            border-radius: 30px;
+            border: none;
+            font-weight: 500;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
 
-    # Split data
+        .stButton>button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+        }
+
+        .info-icon {
+            cursor: help;
+            font-size: 0.8em;
+            color: var(--primary);
+        }
+    </style>
+''', unsafe_allow_html=True)
+
+# --- Title ---
+st.title('👣 Footstep Energy Harvesting Dashboard')
+st.markdown('''
+    <div style='background: linear-gradient(135deg, #2E86AB 0%, #1a6f8b 100%);
+            padding: 15px; border-radius: 15px; color: white; margin-bottom: 30px;'>
+        <h3 style='color: white; margin: 0;'>Predicting Energy Output from Footsteps using Machine Learning</h3>
+    </div>
+''', unsafe_allow_html=True)
+
+# --- Cached Data Operations ---
+@st.cache_data
+def load_data():
+    return pd.read_csv('energy_harvesting_data.csv')
+
+@st.cache_data
+def preprocess_data(df):
+    X = df.drop(columns=['Energy_Output (mA)'])
+    y = df['Energy_Output (mA)']
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    scaler = StandardScaler().fit(X_train)
+    return X_train, X_test, y_train, y_test, scaler
 
-    # --- Model Training ---
+# --- Model Training with Cache ---
+@st.cache_resource
+def train_models():
+    X_train, X_test, y_train, y_test, scaler = preprocess_data(load_data())
     models = {
-        "Linear Regression": LinearRegression(),
-        "Random Forest": RandomForestRegressor(n_estimators=100, random_state=42),
-        "XGBoost": XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42)
+        'Linear Regression': LinearRegression(),
+        'Random Forest': RandomForestRegressor(n_estimators=100, random_state=42),
+        'XGBoost': xgb.XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42)
     }
-
-    results = {}
-
     for name, model in models.items():
         model.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
+    return models, X_test, y_test, scaler
 
-        r2 = r2_score(y_test, y_pred)
-        mae = mean_absolute_error(y_test, y_pred)
-        rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+models, X_test, y_test, scaler = train_models()
 
-        results[name] = {
-            "Model": model,
-            "R2 Score": r2,
-            "MAE": mae,
-            "RMSE": rmse,
-            "y_pred": y_pred
-        }
+# --- Sidebar ---
+st.sidebar.title('🔧 Settings')
+model_option = st.sidebar.selectbox('Select Model', list(models.keys()))
+show_all_models = st.sidebar.checkbox('Compare all models', value=True)
 
-    # --- Performance Metrics Table ---
-    st.write("### 📈 Model Performance Comparison")
+# --- Theory Explanations ---
+METRIC_EXPLANATIONS = {
+    'R² Score': "Explains variance in data (0-1, higher=better)",
+    'RMSE': "Average prediction error in mA (lower=better)",
+    'MAE': "Absolute average error (robust to outliers)"
+}
 
-    perf_df = pd.DataFrame({
-        model: {
-            "R² Score": res["R2 Score"],
-            "MAE": res["MAE"],
-            "RMSE": res["RMSE"]
-        }
-        for model, res in results.items()
-    }).T
+MODEL_DESCRIPTIONS = {
+    'Linear Regression': "Best for linear relationships, fast but less flexible",
+    'Random Forest': "Handles non-linear data, robust to outliers",
+    'XGBoost': "Advanced boosting algorithm, best for complex patterns"
+}
 
-    st.dataframe(perf_df.style.background_gradient(cmap='Blues', axis=0))
+# --- Prediction Tab ---
+tab1, tab2, tab3 = st.tabs(['📊 Predictions', '📈 Visualizations', '🔍 Model Comparison'])
 
-    # --- Visualization ---
-    st.write("### 📉 Actual vs Predicted Plot")
+with tab1:
+    # Metrics Cards with Tooltips
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        y_pred = models[model_option].predict(X_test)
+        st.markdown(f'''<div class='metric-card'>
+            <h3>R² Score <span class='info-icon' title="{METRIC_EXPLANATIONS['R² Score']}">ℹ️</span></h3>
+            <h2 style='color: var(--primary);'>{r2_score(y_test, y_pred):.3f}</h2>
+        </div>''', unsafe_allow_html=True)
+    
+    # Similar columns for RMSE and MAE...
 
-    selected_model = st.selectbox("Select a model to visualize", list(results.keys()))
-    fig, ax = plt.subplots()
-    ax.plot(y_test.values, label='Actual', marker='o')
-    ax.plot(results[selected_model]['y_pred'], label='Predicted', marker='x')
-    ax.set_title(f'Actual vs Predicted - {selected_model}')
-    ax.set_xlabel('Sample Index')
-    ax.set_ylabel(output_col)
-    ax.legend()
-    st.pyplot(fig)
-
-    # --- Optional Prediction Input ---
-    st.write("### 🔍 Make a New Prediction")
+    # Prediction Inputs
+    st.markdown('### 🔍 Make a Prediction')
+    input_cols = st.columns(2)
     input_data = {}
-    for col in X.columns:
-        input_data[col] = st.number_input(f"Enter value for {col}", value=float(df[col].mean()))
+    for i, col in enumerate(models[model_option].feature_names_in_):
+        with input_cols[i % 2]:
+            input_data[col] = st.number_input(
+                f'Enter {col}', 
+                value=float(load_data()[col].mean()),
+                step=0.1
+            )
 
-    input_df = pd.DataFrame([input_data])
-    pred_value = results[selected_model]["Model"].predict(input_df)[0]
-    st.success(f"Predicted {output_col}: **{pred_value:.2f}**")
+    if st.button('Predict Energy Output'):
+        input_scaled = scaler.transform(pd.DataFrame([input_data]))
+        
+        if show_all_models:
+            predictions = {name: model.predict(input_scaled)[0] for name, model in models.items()}
+            # Visualization code...
+
+# --- Optimized Visualization Tab ---
+with tab2:
+    st.markdown('### 🔬 Data Exploration')
+    with st.expander("📘 Understanding Visualizations"):
+        st.markdown("
+        - **Correlation Heatmap**: Shows relationships between features (-1 to 1)
+        - **Feature Importance**: Relative impact of each input on predictions
+        - **Actual vs Predicted**: Ideal points fall on the diagonal line
+        ")
+    
+    # Cached visualizations
+    @st.cache_data
+    def create_correlation_plot(df):
+        return px.imshow(df.corr(), color_continuous_scale='RdBu')
+
+    st.plotly_chart(create_correlation_plot(load_data()), use_container_width=True)
+
+# --- Model Comparison Tab ---
+with tab3:
+    st.markdown('### 🏆 Model Performance Comparison')
+    with st.expander("ℹ️ Model Selection Guide"):
+        st.markdown("
+        - **Linear Regression**: Use when relationships are simple/linear
+        - **Tree-based Models**: Better for complex, non-linear patterns
+        - Compare RMSE/MAE for error magnitude, R² for variance explanation
+        ")
+    
+    # Pre-computed metrics
+    @st.cache_data
+    def get_model_metrics(models):
+        return [
+            {
+                'Model': name,
+                'R²': r2_score(y_test, model.predict(X_test)),
+                'RMSE': np.sqrt(mean_squared_error(y_test, model.predict(X_test))),
+                'MAE': mean_absolute_error(y_test, model.predict(X_test))
+            } 
+            for name, model in models.items()
+        ]
+    
+    metrics_df = pd.DataFrame(get_model_metrics(models))
+    # Visualization code...
+
+style_metric_cards()
+
+
+

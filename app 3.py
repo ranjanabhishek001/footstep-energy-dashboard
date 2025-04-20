@@ -14,104 +14,94 @@ import plotly.graph_objects as go
 from streamlit_extras.metric_cards import style_metric_cards
 
 # --- Custom CSS ---
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
 
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
-
-/* Set a light background for the body and main container */
-body, .main {
-    background-color: #f1f3f6 !important; /* Light grey background */
-    color: #222 !important; /* Dark text for contrast */
-}
-
-/* Customize the Streamlit app background */
-.stApp {
-    background-color: #f1f3f6 !important; /* Ensure app background matches */
-}
-
-/* Apply Poppins font to all text */
-* {
-    font-family: 'Poppins', sans-serif; /* Modern sans-serif font */
-}
-
-/* Style for input fields and text areas */
-.stNumberInput input,
-.stTextInput input,
-.stSelectbox div[role="combobox"],
-.stMultiSelect div[role="combobox"],
-.stTextArea textarea {
-    background-color: #ffffff !important; /* White background for inputs */
-    color: #000000 !important; /* Black text in inputs */
-    border-radius: 8px; /* Rounded corners for inputs */
-    border: 1px solid #ccc; /* Light grey border */
-}
-
-/* Label styles for inputs */
-.stNumberInput label,
-.stTextInput label,
-.stSelectbox label,
-.stMultiSelect label,
-.stTextArea label {
-    color: #000000 !important; /* Black text for labels */
-}
-
-/* Tabs styling */
-.stTabs [data-baseweb="tab"] {
-    color: #000000 !important; /* Black text for unselected tabs */
-    background-color: #e8ecf1 !important; /* Light blue background for tabs */
-}
-
-/* Active tab styling */
-.stTabs [aria-selected="true"] {
-    background-color: #2E86AB !important; /* Blue background for active tab */
-    color: #ffffff !important; /* White text for active tab */
-}
-
-/* Button styling */
-.stButton > button {
-    background: linear-gradient(135deg, #2E86AB 0%, #1a6f8b 100%); /* Gradient background */
-    color: white; /* White text on buttons */
-    padding: 0.5em 2em; /* Padding for button */
-    border-radius: 30px; /* Round button edges */
-    border: none; /* No border */
-    font-weight: 500; /* Medium font weight */
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Subtle shadow for depth */
-    transition: all 0.3s ease; /* Smooth transitions */
-}
-
-/* Button hover effect */
-.stButton > button:hover {
-    transform: translateY(-2px); /* Lift button on hover */
-    box-shadow: 0 6px 8px rgba(0,0,0,0.15); /* Darker shadow on hover */
-}
-
-/* Card styling */
-.metric-card, .prediction-card {
-    background-color: #ffffff !important; /* White background for cards */
-    color: #000000 !important; /* Black text for cards */
-    border-radius: 15px; /* Rounded corners */
-    padding: 20px; /* Padding inside cards */
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05); /* Subtle shadow */
-}
-
-/* Container padding */
-.block-container {
-    padding: 2rem 2rem; /* Adequate padding around blocks */
-}
-
-/* Responsive design adjustments */
-@media (max-width: 768px) {
-    .block-container {
-        padding: 1rem; /* Less padding on smaller screens */
+    body, .main {
+        background-color: #f1f3f6 !important;
+        color: #222 !important;
     }
+
+    .stApp {
+        background-color: #f1f3f6 !important;
+    }
+
+    * {
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .stNumberInput input,
+    .stTextInput input,
+    .stSelectbox div[role="combobox"],
+    .stMultiSelect div[role="combobox"],
+    .stTextArea textarea {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+    }
+
+    .stNumberInput label,
+    .stTextInput label,
+    .stSelectbox label,
+    .stMultiSelect label,
+    .stTextArea label {
+        color: #000000 !important;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        color: #000000 !important;
+        background-color: #e8ecf1 !important;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background-color: #2E86AB !important;
+        color: #ffffff !important;
+    }
+
     .stButton > button {
-        width: 100%; /* Full-width buttons on mobile */
-        padding: 0.75em; /* More padding for touch targets */
+        background: linear-gradient(135deg, #2E86AB 0%, #1a6f8b 100%);
+        color: white;
+        padding: 0.5em 2em;
+        border-radius: 30px;
+        border: none;
+        font-weight: 500;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
     }
-    .metric-card, .prediction-card {
-        padding: 15px; /* Reduced padding for cards */
-    }
-}
 
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+    }
+
+    .metric-card, .prediction-card {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+
+    .block-container {
+        padding: 2rem 2rem;
+    }
+
+    @media (max-width: 768px) {
+        .block-container {
+            padding: 1rem;
+        }
+        .stButton > button {
+            width: 100%;
+            padding: 0.75em;
+        }
+        .metric-card, .prediction-card {
+            padding: 15px;
+        }
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # --- Title ---
 st.title('👣 Footstep Energy Harvesting Dashboard')
@@ -175,26 +165,18 @@ tab1, tab2, tab3 = st.tabs(['📊 Predictions', '📈 Visualizations', '🔍 Mod
 with tab1:
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown('''<div class='metric-card'>
-                    <h3>R² Score</h3>
-                    <h2 style='color: var(--primary);'>{:.3f}</h2>
-                    </div>'''.format(r2), unsafe_allow_html=True)
+        st.markdown('''<div class='metric-card'><h3>R² Score</h3>
+                    <h2 style='color: var(--primary);'>{:.3f}</h2></div>'''.format(r2), unsafe_allow_html=True)
     with col2:
-        st.markdown('''<div class='metric-card'>
-                    <h3>RMSE</h3>
-                    <h2 style='color: var(--accent);'>{:.2f} mA</h2>
-                    </div>'''.format(rmse), unsafe_allow_html=True)
+        st.markdown('''<div class='metric-card'><h3>RMSE</h3>
+                    <h2 style='color: var(--accent);'>{:.2f} mA</h2></div>'''.format(rmse), unsafe_allow_html=True)
     with col3:
-        st.markdown('''<div class='metric-card'>
-                    <h3>MAE</h3>
-                    <h2 style='color: var(--secondary);'>{:.2f} mA</h2>
-                    </div>'''.format(mae), unsafe_allow_html=True)
+        st.markdown('''<div class='metric-card'><h3>MAE</h3>
+                    <h2 style='color: var(--secondary);'>{:.2f} mA</h2></div>'''.format(mae), unsafe_allow_html=True)
 
     style_metric_cards()
-
     st.markdown('---')
 
-    # Predict from user input
     st.markdown('### 🔍 Make a Prediction')
     input_cols = st.columns(2)
     input_data = {}
@@ -214,22 +196,18 @@ with tab1:
         input_scaled = scaler.transform(input_df)
 
         if show_all_models:
-            # Compare predictions from all models
             predictions = {}
             for name, m in models.items():
-                m.fit(X_train_scaled, y_train)  # Retrain to ensure fairness
+                m.fit(X_train_scaled, y_train)
                 predictions[name] = m.predict(input_scaled)[0]
 
-            # Create comparison chart
             fig = go.Figure()
             sorted_preds = sorted(predictions.items(), key=lambda x: x[1], reverse=True)
             names = [x[0] for x in sorted_preds]
             values = [x[1] for x in sorted_preds]
 
             fig.add_trace(go.Bar(
-                x=values,
-                y=names,
-                orientation='h',
+                x=values, y=names, orientation='h',
                 marker_color=['#2E86AB', '#F18F01', '#C73E1D'],
                 text=[f'{v:.2f} mA' for v in values],
                 textposition='auto'
@@ -239,93 +217,55 @@ with tab1:
                 title='Model Comparison for Current Input',
                 xaxis_title='Predicted Energy Output (mA)',
                 yaxis_title='Model',
-                height=300,
-                margin=dict(l=20, r=20, t=40, b=20)
+                height=300
             )
-
             st.plotly_chart(fig, use_container_width=True)
 
-            # Show best model
             best_model = max(predictions.items(), key=lambda x: x[1])
-            st.markdown('''<div class='prediction-card'>
-                    <h3>Best Model for This Input</h3>
-                    <p style='font-size: 24px; margin: 10px 0;'><b>{}</b></p>
-                    <p style='font-size: 18px;'>Predicted Output: <b style='color: var(--accent);'>{:.2f} mA</b></p>
-                </div>'''.format(best_model[0], best_model[1]), unsafe_allow_html=True)
+            st.markdown('''<div class='prediction-card'><h3>Best Model for This Input</h3>
+                        <p style='font-size: 24px; margin: 10px 0;'><b>{}</b></p>
+                        <p style='font-size: 18px;'>Predicted Output: <b style='color: var(--accent);'>{:.2f} mA</b></p>
+                    </div>'''.format(best_model[0], best_model[1]), unsafe_allow_html=True)
         else:
-            # Single model prediction
             prediction = model.predict(input_scaled)[0]
-            st.markdown('''<div class='prediction-card'>
-                    <h3>Prediction Result</h3>
-                    <p style='font-size: 24px; margin: 10px 0;'><b>{}</b></p>
-                    <p style='font-size: 18px;'>Predicted Output: <b style='color: var(--accent);'>{:.2f} mA</b></p>
-                </div>'''.format(model_option, prediction), unsafe_allow_html=True)
+            st.markdown('''<div class='prediction-card'><h3>Prediction Result</h3>
+                        <p style='font-size: 24px; margin: 10px 0;'><b>{}</b></p>
+                        <p style='font-size: 18px;'>Predicted Output: <b style='color: var(--accent);'>{:.2f} mA</b></p>
+                    </div>'''.format(model_option, prediction), unsafe_allow_html=True)
 
 with tab2:
     st.markdown('### 🔬 Data Exploration')
-
-    # Data summary
     with st.expander('📋 Dataset Overview'):
         st.dataframe(df.describe().style.background_gradient(cmap='Blues'))
 
-    # Correlation Heatmap
     st.markdown('#### 🔥 Correlation Heatmap')
-    fig1 = px.imshow(
-        df.corr(),
-        text_auto=True,
-        color_continuous_scale='RdBu',
-        aspect='auto'
-    )
+    fig1 = px.imshow(df.corr(), text_auto=True, color_continuous_scale='RdBu')
     st.plotly_chart(fig1, use_container_width=True)
 
-    # Feature Distribution
     st.markdown('#### 📊 Feature Distributions')
     feature = st.selectbox('Select feature to visualize', X.columns)
-
-    fig_dist = px.histogram(
-        df,
-        x=feature,
-        marginal='box',
-        color_discrete_sequence=['#2E86AB'],
-        title=f'Distribution of {feature}'
-    )
+    fig_dist = px.histogram(df, x=feature, marginal='box', color_discrete_sequence=['#2E86AB'])
     st.plotly_chart(fig_dist, use_container_width=True)
 
-    # Feature vs Energy Output
     st.markdown('#### ⚡ Feature vs Energy Output')
-    fig_scatter = px.scatter(
-        df,
-        x=feature,
-        y='Energy_Output (mA)',
-        trendline='lowess',
-        color_discrete_sequence=['#F18F01'],
-        title=f'{feature} vs Energy Output'
-    )
+    fig_scatter = px.scatter(df, x=feature, y='Energy_Output (mA)', trendline='lowess',
+                             color_discrete_sequence=['#F18F01'])
     st.plotly_chart(fig_scatter, use_container_width=True)
 
-    # Feature Importance (if tree-based model)
     if model_option in ['Random Forest', 'XGBoost']:
         st.markdown('#### 🧠 Feature Importance')
         importance_df = pd.DataFrame({
             'Feature': X.columns,
             'Importance': model.feature_importances_
         }).sort_values(by='Importance', ascending=True)
-
-        fig_importance = px.bar(
-            importance_df,
-            x='Importance',
-            y='Feature',
-            orientation='h',
-            color='Importance',
-            color_continuous_scale='Blues',
-            title='Feature Importance'
-        )
+        fig_importance = px.bar(importance_df, x='Importance', y='Feature',
+                                orientation='h', color='Importance',
+                                color_continuous_scale='Blues')
         st.plotly_chart(fig_importance, use_container_width=True)
 
 with tab3:
     st.markdown('### 🏆 Model Performance Comparison')
 
-    # Train all models and collect metrics
     metrics = []
     for name, m in models.items():
         m.fit(X_train_scaled, y_train)
@@ -339,7 +279,6 @@ with tab3:
 
     metrics_df = pd.DataFrame(metrics)
 
-    # Display metrics table
     st.dataframe(
         metrics_df.style
         .background_gradient(subset=['R²'], cmap='Greens')
@@ -348,44 +287,20 @@ with tab3:
         use_container_width=True
     )
 
-    # Interactive comparison chart
     metric_to_compare = st.selectbox('Select metric to compare', ['R²', 'RMSE', 'MAE'])
-
-    fig_compare = px.bar(
-        metrics_df,
-        x='Model',
-        y=metric_to_compare,
-        color='Model',
-        color_discrete_sequence=['#2E86AB', '#F18F01', '#C73E1D'],
-        text_auto='.2f',
-        title=f'Model Comparison by {metric_to_compare}'
-    )
+    fig_compare = px.bar(metrics_df, x='Model', y=metric_to_compare, color='Model',
+                         color_discrete_sequence=['#2E86AB', '#F18F01', '#C73E1D'], text_auto='.2f')
     st.plotly_chart(fig_compare, use_container_width=True)
 
-    # Actual vs Predicted comparison
     st.markdown('#### 📈 Actual vs Predicted Comparison')
-
     actual_vs_pred = []
     for name, m in models.items():
         m.fit(X_train_scaled, y_train)
         y_pred = m.predict(X_test_scaled)
-        actual_vs_pred.append(pd.DataFrame({
-            'Model': name,
-            'Actual': y_test,
-            'Predicted': y_pred
-        }))
-
+        actual_vs_pred.append(pd.DataFrame({'Model': name, 'Actual': y_test, 'Predicted': y_pred}))
     actual_vs_pred_df = pd.concat(actual_vs_pred)
-
-    fig_avp = px.scatter(
-        actual_vs_pred_df,
-        x='Actual',
-        y='Predicted',
-        color='Model',
-        facet_col='Model',
-        facet_col_wrap=3,
-        color_discrete_sequence=['#2E86AB', '#F18F01', '#C73E1D'],
-        trendline='lowess',
-        title='Actual vs Predicted Values Across Models'
-    )
+    fig_avp = px.scatter(actual_vs_pred_df, x='Actual', y='Predicted', color='Model',
+                         facet_col='Model', facet_col_wrap=3,
+                         color_discrete_sequence=['#2E86AB', '#F18F01', '#C73E1D'],
+                         trendline='lowess')
     st.plotly_chart(fig_avp, use_container_width=True)

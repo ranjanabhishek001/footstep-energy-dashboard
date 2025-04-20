@@ -58,9 +58,9 @@ def train_and_save_models():
     rf.fit(X_train, y_train)
     xgb.fit(X_train, y_train)
 
-    joblib.dump(linear, "models/linear_model.pkl")
-    joblib.dump(rf, "models/rf_model.pkl")
-    joblib.dump(xgb, "models/xgb_model.pkl")
+    joblib.dump(linear, "linear_model.pkl")
+    joblib.dump(rf, "rf_model.pkl")
+    joblib.dump(xgb, "xgb_model.pkl")
 
 if not all(os.path.exists(f"models/{m}_model.pkl") for m in ["linear", "rf", "xgb"]):
     train_and_save_models()

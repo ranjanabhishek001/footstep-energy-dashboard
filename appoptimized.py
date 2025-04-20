@@ -67,9 +67,9 @@ if not all(os.path.exists(f"models/{m}_model.pkl") for m in ["linear", "rf", "xg
 
 # Load models
 model_dict = {
-    "Linear Regression": joblib.load("models/linear_model.pkl"),
-    "Random Forest": joblib.load("models/rf_model.pkl"),
-    "XGBoost": joblib.load("models/xgb_model.pkl"),
+    "Linear Regression": joblib.load("linear_model.pkl"),
+    "Random Forest": joblib.load("rf_model.pkl"),
+    "XGBoost": joblib.load("xgb_model.pkl"),
 }
 
 # Main interface

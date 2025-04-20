@@ -14,6 +14,7 @@ import plotly.graph_objects as go
 from streamlit_extras.metric_cards import style_metric_cards
 
 # --- Custom CSS ---
+
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
 
 /* Set a light background for the body and main container */

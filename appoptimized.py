@@ -38,7 +38,7 @@ with tab2:
 
 # Feature selection
 X = df.drop("Energy_Output", axis=1)
-y = df["Energy_Output"]
+y = df["Energy_Output (mA)"]
 
 # Preprocessing
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)

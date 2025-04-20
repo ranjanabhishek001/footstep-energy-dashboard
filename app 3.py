@@ -14,90 +14,103 @@ import plotly.graph_objects as go
 from streamlit_extras.metric_cards import style_metric_cards
 
 # --- Custom CSS ---
-st.markdown('''
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
 
-        :root {
-            --primary: #2E86AB;
-            --secondary: #F18F01;
-            --accent: #C73E1D;
-            --light: #F0F2F6;
-            --dark: #2B2D42;
-        }
+/* Set a light background for the body and main container */
+body, .main {
+    background-color: #f1f3f6 !important; /* Light grey background */
+    color: #222 !important; /* Dark text for contrast */
+}
 
-        * {
-            font-family: 'Poppins', sans-serif;
-        }
+/* Customize the Streamlit app background */
+.stApp {
+    background-color: #f1f3f6 !important; /* Ensure app background matches */
+}
 
-        .main {
-            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 100%);
-        }
+/* Apply Poppins font to all text */
+* {
+    font-family: 'Poppins', sans-serif; /* Modern sans-serif font */
+}
 
-        h1, h2, h3 {
-            color: var(--primary);
-            font-weight: 600;
-        }
+/* Style for input fields and text areas */
+.stNumberInput input,
+.stTextInput input,
+.stSelectbox div[role="combobox"],
+.stMultiSelect div[role="combobox"],
+.stTextArea textarea {
+    background-color: #ffffff !important; /* White background for inputs */
+    color: #000000 !important; /* Black text in inputs */
+    border-radius: 8px; /* Rounded corners for inputs */
+    border: 1px solid #ccc; /* Light grey border */
+}
 
-        .stButton>button {
-            background: linear-gradient(135deg, var(--primary) 0%, #1a6f8b 100%);
-            color: white;
-            padding: 0.5em 2em;
-            border-radius: 30px;
-            border: none;
-            font-weight: 500;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
-        }
+/* Label styles for inputs */
+.stNumberInput label,
+.stTextInput label,
+.stSelectbox label,
+.stMultiSelect label,
+.stTextArea label {
+    color: #000000 !important; /* Black text for labels */
+}
 
-        .stButton>button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
-        }
+/* Tabs styling */
+.stTabs [data-baseweb="tab"] {
+    color: #000000 !important; /* Black text for unselected tabs */
+    background-color: #e8ecf1 !important; /* Light blue background for tabs */
+}
 
-        .stSelectbox, .stNumberInput {
-            border-radius: 10px !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
+/* Active tab styling */
+.stTabs [aria-selected="true"] {
+    background-color: #2E86AB !important; /* Blue background for active tab */
+    color: #ffffff !important; /* White text for active tab */
+}
 
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 10px;
-        }
+/* Button styling */
+.stButton > button {
+    background: linear-gradient(135deg, #2E86AB 0%, #1a6f8b 100%); /* Gradient background */
+    color: white; /* White text on buttons */
+    padding: 0.5em 2em; /* Padding for button */
+    border-radius: 30px; /* Round button edges */
+    border: none; /* No border */
+    font-weight: 500; /* Medium font weight */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Subtle shadow for depth */
+    transition: all 0.3s ease; /* Smooth transitions */
+}
 
-        .stTabs [data-baseweb="tab"] {
-            padding: 8px 20px;
-            border-radius: 20px !important;
-            background-color: white;
-            transition: all 0.3s ease;
-        }
+/* Button hover effect */
+.stButton > button:hover {
+    transform: translateY(-2px); /* Lift button on hover */
+    box-shadow: 0 6px 8px rgba(0,0,0,0.15); /* Darker shadow on hover */
+}
 
-        .stTabs [aria-selected="true"] {
-            background-color: var(--primary) !important;
-            color: white !important;
-        }
+/* Card styling */
+.metric-card, .prediction-card {
+    background-color: #ffffff !important; /* White background for cards */
+    color: #000000 !important; /* Black text for cards */
+    border-radius: 15px; /* Rounded corners */
+    padding: 20px; /* Padding inside cards */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05); /* Subtle shadow */
+}
 
-        .metric-card {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: all 0.3s ease;
-        }
+/* Container padding */
+.block-container {
+    padding: 2rem 2rem; /* Adequate padding around blocks */
+}
 
-        .metric-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-        }
+/* Responsive design adjustments */
+@media (max-width: 768px) {
+    .block-container {
+        padding: 1rem; /* Less padding on smaller screens */
+    }
+    .stButton > button {
+        width: 100%; /* Full-width buttons on mobile */
+        padding: 0.75em; /* More padding for touch targets */
+    }
+    .metric-card, .prediction-card {
+        padding: 15px; /* Reduced padding for cards */
+    }
+}
 
-        .prediction-card {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.08);
-            border-left: 5px solid var(--primary);
-        }
-    </style>
-''', unsafe_allow_html=True)
 
 # --- Title ---
 st.title('👣 Footstep Energy Harvesting Dashboard')
